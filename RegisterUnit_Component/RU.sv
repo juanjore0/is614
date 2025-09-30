@@ -1,4 +1,4 @@
-module register_file (
+module registerUnit (
   input  logic [4:0]  rs1,
   input  logic [4:0]  rs2,
   input  logic [4:0]  rd, 
