@@ -3,3 +3,35 @@ archivos/
 .venv/
 *.pyc
 __pycache__/
+
+# Ignorar todo en la carpeta QUARTUS
+QUARTUS/*
+
+# Exceptuar archivos de código fuente SystemVerilog
+!QUARTUS/*.sv
+
+# También permitir el archivo de proyecto si lo deseas
+#!QUARTUS/*.qpf
+#!QUARTUS/*.qsf
+
+# Ignorar copias de respaldo
+*.bak
+*.rpt
+*.smsg
+*.summary
+*.pin
+*.sof
+*.sld
+*.done
+*.jdi
+*.sft
+*.svo
+
+# Ignorar bases de datos temporales de Quartus
+QUARTUS/db/
+QUARTUS/incremental_db/
+QUARTUS/output_files/
+QUARTUS/simulation/
+
+# Ignorar locks de Quartus
+*.rdr.flock
