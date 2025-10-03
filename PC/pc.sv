@@ -8,10 +8,10 @@ module pc (
 );
 
   always @(posedge clk) begin
-    if (reset == 1'b1)
-      address = initial_address;
+    if (reset)
+      address <= initial_address;
     else 
-      address = next_address;
+      address <= next_address;
   end
   
 endmodule
