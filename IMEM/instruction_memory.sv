@@ -11,10 +11,7 @@ module instruction_memory (
   // Inicialización (puedes cargar desde archivo)
   initial begin
     // Ejemplo de instrucciones tipo R
-    // ADD x1, x2, x3: 0x003100B3
-    memory[0] = 32'h003100B3;
-    // Inicializa el resto en 0
-    for (int i = 1; i < 256; i++) 
-      memory[i] = 32'h00000000;
+    $readmemb("instructions.txt", memory);
+    
   end
 endmodule
