@@ -1,8 +1,8 @@
 module alu (
   input  logic [31:0] operand1,   // Operando 1 (32 bits)
   input  logic [31:0] operand2,   // Operando 2 (32 bits)
-  input  logic [2:0]  func3,      // Campo func3 de RISC-V
-  input  logic subsra,     // Control extra: SUB/ADD o SRA/SRL
+  input  logic [2:0]  funct3,     // ← CAMBIAR de func3 a funct3
+  input  logic subsra,            // Control extra: SUB/ADD o SRA/SRL
   output logic [31:0] result      // Resultado de la operación
 );
 
@@ -11,7 +11,7 @@ module alu (
   always_comb begin
     signed_op1 = operand1;  // Conversión a signed
     
-    case (func3)
+    case (funct3)  // ← CAMBIAR aquí también
       3'b000: // ADD o SUB
         result = subsra ? (operand1 - operand2) : (operand1 + operand2);
       

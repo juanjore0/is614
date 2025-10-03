@@ -1,0 +1,468 @@
+$date
+	Fri Oct 03 17:30:06 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module tb_monocycle $end
+$var wire 32 ! pc_out [31:0] $end
+$var wire 32 " instruction_out [31:0] $end
+$var reg 1 # clk $end
+$var reg 32 $ initial_pc [31:0] $end
+$var reg 1 % reset $end
+$var reg 1 & tr $end
+$var integer 32 ' cycle_count [31:0] $end
+$scope module dut $end
+$var wire 1 # clk $end
+$var wire 32 ( initial_pc [31:0] $end
+$var wire 32 ) instruction_out [31:0] $end
+$var wire 32 * pc_out [31:0] $end
+$var wire 1 % reset $end
+$var wire 1 & tr $end
+$var wire 1 + subsra $end
+$var wire 1 , ru_write $end
+$var wire 2 - ru_data_src [1:0] $end
+$var wire 32 . rs2Data [31:0] $end
+$var wire 5 / rs2 [4:0] $end
+$var wire 32 0 rs1Data [31:0] $end
+$var wire 5 1 rs1 [4:0] $end
+$var wire 5 2 rd [4:0] $end
+$var wire 32 3 pc_next [31:0] $end
+$var wire 32 4 pc_current [31:0] $end
+$var wire 7 5 opcode [6:0] $end
+$var wire 32 6 instruction [31:0] $end
+$var wire 3 7 imm_src [2:0] $end
+$var wire 7 8 funct7 [6:0] $end
+$var wire 3 9 funct3 [2:0] $end
+$var wire 1 : dm_write $end
+$var wire 3 ; dm_ctrl [2:0] $end
+$var wire 5 < br_op [4:0] $end
+$var wire 4 = alu_op [3:0] $end
+$var wire 1 > alu_b_src $end
+$var wire 2 ? alu_a_src [1:0] $end
+$var wire 32 @ aluResult [31:0] $end
+$scope module arithmetic_logic_unit $end
+$var wire 1 + subsra $end
+$var wire 32 A operand2 [31:0] $end
+$var wire 32 B operand1 [31:0] $end
+$var wire 3 C funct3 [2:0] $end
+$var reg 32 D result [31:0] $end
+$var reg 32 E signed_op1 [31:0] $end
+$upscope $end
+$scope module control $end
+$var wire 7 F opcode [6:0] $end
+$var wire 7 G funct7 [6:0] $end
+$var wire 3 H funct3 [2:0] $end
+$var reg 2 I alu_a_src [1:0] $end
+$var reg 1 > alu_b_src $end
+$var reg 4 J alu_op [3:0] $end
+$var reg 5 K br_op [4:0] $end
+$var reg 3 L dm_ctrl [2:0] $end
+$var reg 1 : dm_write $end
+$var reg 3 M imm_src [2:0] $end
+$var reg 2 N ru_data_src [1:0] $end
+$var reg 1 , ru_write $end
+$upscope $end
+$scope module decoder $end
+$var wire 5 O rs2 [4:0] $end
+$var wire 5 P rs1 [4:0] $end
+$var wire 5 Q rd [4:0] $end
+$var wire 7 R opcode [6:0] $end
+$var wire 32 S instruction [31:0] $end
+$var wire 7 T funct7 [6:0] $end
+$var wire 3 U funct3 [2:0] $end
+$upscope $end
+$scope module imem $end
+$var wire 32 V instruction [31:0] $end
+$var wire 32 W address [31:0] $end
+$upscope $end
+$scope module pc_adder $end
+$var wire 32 X output_32 [31:0] $end
+$var wire 32 Y input_1 [31:0] $end
+$upscope $end
+$scope module program_counter $end
+$var wire 1 # clk $end
+$var wire 32 Z initial_address [31:0] $end
+$var wire 32 [ next_address [31:0] $end
+$var wire 1 % reset $end
+$var reg 32 \ address [31:0] $end
+$upscope $end
+$scope module reg_file $end
+$var wire 1 # clk $end
+$var wire 32 ] data [31:0] $end
+$var wire 5 ^ rd [4:0] $end
+$var wire 5 _ rs1 [4:0] $end
+$var wire 32 ` rs1Data [31:0] $end
+$var wire 5 a rs2 [4:0] $end
+$var wire 32 b rs2Data [31:0] $end
+$var wire 1 & tr $end
+$var wire 1 , writeEnable $end
+$scope begin $ivl_for_loop0 $end
+$var integer 32 c i [31:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$scope task decode_and_display $end
+$var reg 3 d funct3 [2:0] $end
+$var reg 7 e funct7 [6:0] $end
+$var reg 32 f instr [31:0] $end
+$var reg 7 g opcode [6:0] $end
+$var reg 5 h rd [4:0] $end
+$var reg 5 i rs1 [4:0] $end
+$var reg 5 j rs2 [4:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+bx j
+bx i
+bx h
+bx g
+bx f
+bx e
+bx d
+b0 c
+bx b
+bx a
+bx `
+bx _
+bx ^
+b0 ]
+bx \
+bx [
+b0 Z
+bx Y
+bx X
+bx W
+bx V
+bx U
+bx T
+bx S
+bx R
+bx Q
+bx P
+bx O
+b0 N
+b0 M
+b0 L
+b0 K
+b0 J
+b0 I
+bx H
+bx G
+bx F
+bx E
+b0 D
+bx C
+bx B
+bx A
+b0 @
+b0 ?
+0>
+b0 =
+b0 <
+b0 ;
+0:
+bx 9
+bx 8
+b0 7
+bx 6
+bx 5
+bx 4
+bx 3
+bx 2
+bx 1
+bx 0
+bx /
+bx .
+b0 -
+0,
+0+
+bx *
+bx )
+b0 (
+b0 '
+0&
+1%
+b0 $
+0#
+bx "
+bx !
+$end
+#5000
+b100 3
+b100 X
+b100 [
+b0 !
+b0 *
+b0 4
+b0 W
+b0 Y
+b0 \
+1#
+#10000
+0#
+#15000
+b1000 3
+b1000 X
+b1000 [
+b100 !
+b100 *
+b100 4
+b100 W
+b100 Y
+b100 \
+b1 '
+1#
+0%
+#20000
+0#
+#25000
+b1100 3
+b1100 X
+b1100 [
+b1000 !
+b1000 *
+b1000 4
+b1000 W
+b1000 Y
+b1000 \
+b10 '
+1#
+#30000
+0#
+#35000
+b10000 3
+b10000 X
+b10000 [
+b1100 !
+b1100 *
+b1100 4
+b1100 W
+b1100 Y
+b1100 \
+b11 '
+1#
+#40000
+0#
+#45000
+b10100 3
+b10100 X
+b10100 [
+b10000 !
+b10000 *
+b10000 4
+b10000 W
+b10000 Y
+b10000 \
+b100 '
+1#
+#50000
+0#
+#55000
+b11000 3
+b11000 X
+b11000 [
+b10100 !
+b10100 *
+b10100 4
+b10100 W
+b10100 Y
+b10100 \
+b101 '
+1#
+#60000
+0#
+#65000
+b11100 3
+b11100 X
+b11100 [
+b11000 !
+b11000 *
+b11000 4
+b11000 W
+b11000 Y
+b11000 \
+b110 '
+1#
+#70000
+0#
+#75000
+b100000 3
+b100000 X
+b100000 [
+b11100 !
+b11100 *
+b11100 4
+b11100 W
+b11100 Y
+b11100 \
+b111 '
+1#
+#80000
+0#
+#85000
+b100100 3
+b100100 X
+b100100 [
+b100000 !
+b100000 *
+b100000 4
+b100000 W
+b100000 Y
+b100000 \
+b1000 '
+1#
+#90000
+0#
+#95000
+b101000 3
+b101000 X
+b101000 [
+b100100 !
+b100100 *
+b100100 4
+b100100 W
+b100100 Y
+b100100 \
+b1001 '
+1#
+#100000
+0#
+#105000
+b101100 3
+b101100 X
+b101100 [
+b101000 !
+b101000 *
+b101000 4
+b101000 W
+b101000 Y
+b101000 \
+b1010 '
+1#
+#110000
+0#
+#115000
+b110000 3
+b110000 X
+b110000 [
+b101100 !
+b101100 *
+b101100 4
+b101100 W
+b101100 Y
+b101100 \
+b1011 '
+1#
+#120000
+0#
+#125000
+b110100 3
+b110100 X
+b110100 [
+b110000 !
+b110000 *
+b110000 4
+b110000 W
+b110000 Y
+b110000 \
+b1100 '
+1#
+#130000
+0#
+#135000
+b111000 3
+b111000 X
+b111000 [
+b110100 !
+b110100 *
+b110100 4
+b110100 W
+b110100 Y
+b110100 \
+b1101 '
+1#
+#140000
+0#
+#145000
+b111100 3
+b111100 X
+b111100 [
+b111000 !
+b111000 *
+b111000 4
+b111000 W
+b111000 Y
+b111000 \
+b1110 '
+1#
+#150000
+0#
+#155000
+b1000000 3
+b1000000 X
+b1000000 [
+b111100 !
+b111100 *
+b111100 4
+b111100 W
+b111100 Y
+b111100 \
+b1111 '
+1#
+#156000
+1&
+#160000
+0#
+#165000
+b1000100 3
+b1000100 X
+b1000100 [
+b1000000 !
+b1000000 *
+b1000000 4
+b1000000 W
+b1000000 Y
+b1000000 \
+b100000 c
+b10000 '
+1#
+#166000
+0&
+#170000
+0#
+#175000
+b1001000 3
+b1001000 X
+b1001000 [
+b1000100 !
+b1000100 *
+b1000100 4
+b1000100 W
+b1000100 Y
+b1000100 \
+b10001 '
+1#
+#180000
+0#
+#185000
+b1001100 3
+b1001100 X
+b1001100 [
+b1001000 !
+b1001000 *
+b1001000 4
+b1001000 W
+b1001000 Y
+b1001000 \
+b10010 '
+1#
+#186000

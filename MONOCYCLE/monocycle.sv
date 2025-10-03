@@ -1,10 +1,4 @@
-`include "../PC/pc.sv"
-`include "../ALU/alu.sv"
-`include "../REGISTER_UNIT/register_unit.sv"
-`include "../SUMADOR/sumador.sv"
-`include "../IMEM/instruction_memory.sv"
-`include "../DECODER/instruction_decoder.sv"
-`include "../CONTROL/control_unit.sv"
+// NO incluir archivos aquí - iverilog los compila todos juntos
 
 module monocycle (
   input  logic        clk,
@@ -117,7 +111,7 @@ module monocycle (
   alu arithmetic_logic_unit (
     .operand1(rs1Data),
     .operand2(rs2Data),
-    .func3(funct3),
+    .funct3(funct3),
     .subsra(subsra),
     .result(aluResult)
   );
