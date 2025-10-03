@@ -8,10 +8,8 @@ module instruction_memory (
   // Lectura combinacional
   assign instruction = memory[address[31:2]]; // Divide por 4 (word-aligned)
   
-  // Inicialización (puedes cargar desde archivo)
+  // Inicialización
   initial begin
-    // Ejemplo de instrucciones tipo R
-    $readmemb("instructions.txt", memory);
-    
+    $readmemb("IMEM/instructions.txt", memory);  // ← Ruta completa desde la raíz
   end
 endmodule
