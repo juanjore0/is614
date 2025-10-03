@@ -1,6 +1,7 @@
 `include "../PC/pc.sv"
 `include "../ALU/alu.sv"
 `include "../REGISTER_UNIT/register_unit.sv"
+`include "../SUMADOR/sumador.sv"
 `include "../IMEM/instruction_memory.sv"
 `include "../DECODER/instruction_decoder.sv"
 `include "../CONTROL/control_unit.sv"
@@ -35,8 +36,7 @@ module monocycle (
   logic [31:0] rs1Data, rs2Data;
   logic [31:0] aluResult;
   
-  // PC + 4
-  assign pc_next = pc_current + 32'd4;
+  // Salidas
   assign pc_out = pc_current;
   assign instruction_out = instruction;
   
@@ -49,6 +49,12 @@ module monocycle (
     .reset(reset),
     .initial_address(initial_pc),
     .address(pc_current)
+  );
+  
+  // Sumador PC + 4
+  sumador pc_adder (
+    .input_1(pc_current),
+    .output_32(pc_next)
   );
   
   // Instruction Memory
