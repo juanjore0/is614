@@ -1,4 +1,6 @@
 module instruction_decoder (
+
+  //instrucciones tipo R
   input  logic [31:0] instruction,
   
   output logic [6:0]  opcode,
