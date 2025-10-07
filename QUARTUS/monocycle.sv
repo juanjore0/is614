@@ -77,6 +77,7 @@ module monocycle (
     .input_1(pc_current),
     .output_32(pc_next)
   );
+  assign pc_next = reset ? 32'h00000000 : pc_sum;
   
   instruction_memory imem (
     .address(pc_current),
