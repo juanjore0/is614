@@ -38,6 +38,33 @@ module control_unit (
         br_op        = 5'b00xxx;       // No es branch
         ru_data_src  = 2'b00;          // Datos = resultado ALU
       end
+		
+		7'b0010011: begin // Tipo I (Operaciones inmediatas)
+        ru_write     = 1'b1;           // Habilita escritura en rd
+        // Para SRAI el bit 30 de instruction (funct7[5]) indica aritmético
+        alu_op       = {funct7[5], funct3}; // Similar a tipo R
+        imm_src      = 3'b000;         // Tipo I
+        alu_a_src    = 2'b00;          // Operando A = rs1
+        alu_b_src    = 1'b1;           // Operando B = inmediato
+        dm_write     = 1'b0;           // No escribe en memoria
+        dm_ctrl      = 3'bxxx;         // No usa memoria
+        br_op        = 5'b00xxx;       // No es branch
+        ru_data_src  = 2'b00;          // Datos = resultado ALU
+      end
+		
+		
+      7'b0000011: begin // Tipo I (Instrucciones de carga - Load)
+        ru_write     = 1'b1;           // Habilita escritura en rd
+        alu_op       = 4'b0000;        // ALU suma (rs1 + imm)
+        imm_src      = 3'b000;         // Tipo I (mismo formato)
+        alu_a_src    = 2'b00;          // Operando A = rs1
+        alu_b_src    = 1'b1;           // Operando B = inmediato
+        dm_write     = 1'b0;           // No escribe en memoria (solo lee)
+        dm_ctrl      = funct3;         // funct3 indica tipo de load
+        br_op        = 5'b00xxx;       // No es branch
+        ru_data_src  = 2'b01;          // Datos = memoria de datos
+      end
+		
     endcase
   end
 

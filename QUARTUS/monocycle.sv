@@ -21,6 +21,7 @@ module monocycle (
   logic        clk;
   logic        reset;
   logic        tr;
+  logic        show_result; //SW[9] cambiar entre instrucción y resultado 
   
   // Configuración de controles
   // KEY[0] actúa como el reloj manual (activo bajo, por eso se niega)
@@ -29,10 +30,13 @@ module monocycle (
   assign reset = ~KEY[1];
   // SW[1] se mantiene para el modo 'trace'
   assign tr = SW[1];
+  assign show_result = SW[9]; //mostrar el resultado
+  
   
   // ========== SEÑALES DEL PROCESADOR ==========
   logic [31:0] pc_current;
   logic [31:0] pc_next;
+  logic [31:0] pc_sum;
   logic [31:0] instruction;
   
   // Señales del decoder
@@ -55,13 +59,32 @@ module monocycle (
   // Señales de datos
   logic [31:0] rs1Data, rs2Data;
   logic [31:0] aluResult;
+  logic [31:0] immediate;
+  logic [31:0] aluOperandA, aluOperandB;
+  logic [31:0] ruWriteData;
+  logic [31:0] memReadData;
   logic        subsra;
   
   assign subsra = alu_op[3];
   
+    // Multiplexores
+  assign aluOperandA = rs1Data;  // Por ahora siempre rs1
+  assign aluOperandB = alu_b_src ? immediate : rs2Data;
+  
+  // Multiplexor para seleccionar fuente de datos para registro
+  always_comb begin
+    case (ru_data_src)
+      2'b00:   ruWriteData = aluResult;    // Resultado de ALU
+      2'b01:   ruWriteData = memReadData;  // Datos de memoria
+      2'b10:   ruWriteData = pc_sum;       // PC+4 (para JAL/JALR)
+      default: ruWriteData = aluResult;
+    endcase
+  end
+  
+  
   // LEDs: Muestra PC[7:0] en los bits bajos y los 2 bits más altos de instrucción
   assign LEDR[7:0] = pc_current[7:0];
-  assign LEDR[9:8] = instruction[31:30];
+  assign LEDR[9:8] = instruction[1:0]; //31:30
   
   // ========== MÓDULOS DEL PROCESADOR ==========
   
@@ -90,6 +113,65 @@ module monocycle (
   // ========== DECODIFICADORES 7 SEGMENTOS ==========
   // Muestra los 24 bits menos significativos de la instrucción.
   // Si 'reset' está activo (KEY[1] presionado), muestra '0' en todos los displays.
+  
+    instruction_decoder decoder (
+    .instruction(instruction),
+    .opcode(opcode),
+    .rd(rd),
+    .funct3(funct3),
+    .rs1(rs1),
+    .rs2(rs2),
+    .funct7(funct7)
+  );
+  
+  control_unit ctrl (
+    .opcode(opcode),
+    .funct3(funct3),
+    .funct7(funct7),
+    .ru_write(ru_write),
+    .alu_op(alu_op),
+    .imm_src(imm_src),
+    .alu_a_src(alu_a_src),
+    .alu_b_src(alu_b_src),
+    .dm_write(dm_write),
+    .dm_ctrl(dm_ctrl),
+    .br_op(br_op),
+    .ru_data_src(ru_data_src)
+  );
+  
+  immediate_generator imm_gen (
+    .instruction(instruction),
+    .imm_src(imm_src),
+    .immediate(immediate)
+  );
+  
+  registerUnit reg_file (
+    .rs1(rs1),
+    .rs2(rs2),
+    .rd(rd),
+    .clk(clk),
+    .writeEnable(ru_write),
+    .data(ruWriteData),
+    .tr(tr),
+    .rs1Data(rs1Data),
+    .rs2Data(rs2Data)
+  );
+  
+  alu alu_unit (
+    .operand1(aluOperandA),
+    .operand2(aluOperandB),
+    .funct3(funct3),
+    .subsra(subsra),
+    .result(aluResult)
+  );
+  
+  // ========== DECODIFICADORES 7 SEGMENTOS ==========
+  // SW[9] selecciona qué mostrar:
+  // 0 = instrucción en hexadecimal
+  // 1 = resultado de la ALU en hexadecimal
+  
+  logic [31:0] display_data;
+  assign display_data = show_result ? aluResult : instruction;
   
   logic [6:0] seg0, seg1, seg2, seg3, seg4, seg5;
   logic [6:0] ZERO_7SEG = 7'b1000000; // Código para mostrar '0'
