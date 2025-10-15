@@ -164,7 +164,7 @@ module monocycle (
     .result(aluResult)
   );
   
-  // ¡INSTANCIAR MEMORIA DE DATOS! (FALTABA)
+  // ¡INSTANCIAR MEMORIA DE DATOS!
   data_memory dmem (
     .clk(clk),
     .address(aluResult),        // Dirección = resultado ALU (rs1 + imm)

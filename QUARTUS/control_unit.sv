@@ -49,7 +49,7 @@ module control_unit (
         br_op        = 5'b00xxx;
         ru_data_src  = 2'b00;
         
-        // CORRECCIÓN: Diferenciar shifts de otras operaciones
+        // Diferenciar shifts de otras operaciones
         case (funct3)
           3'b001, 3'b101: // SLLI, SRLI/SRAI (shifts usan funct7[5])
             alu_op = {funct7[5], funct3};
