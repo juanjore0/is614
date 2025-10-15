@@ -6,31 +6,28 @@ module monocycle (
   input  logic [9:0]  SW,          // Switches
   
   // Salidas a displays de 7 segmentos
-  output logic [6:0]  HEX0,        // instrucción[3:0]
-  output logic [6:0]  HEX1,        // instrucción[7:4]
-  output logic [6:0]  HEX2,        // instrucción[11:8]
-  output logic [6:0]  HEX3,        // instrucción[15:12]
-  output logic [6:0]  HEX4,        // instrucción[19:16]
-  output logic [6:0]  HEX5,        // instrucción[23:20]
+  output logic [6:0]  HEX0,        // dato[3:0]
+  output logic [6:0]  HEX1,        // dato[7:4]
+  output logic [6:0]  HEX2,        // dato[11:8]
+  output logic [6:0]  HEX3,        // dato[15:12]
+  output logic [6:0]  HEX4,        // dato[19:16]
+  output logic [6:0]  HEX5,        // dato[23:20]
   
   // LEDs para debug
-  output logic [9:0]  LEDR         // PC y bits superiores de instrucción
+  output logic [9:0]  LEDR         // PC y bits de instrucción
 );
 
   // ========== SEÑALES DE CONTROL ==========
   logic        clk;
   logic        reset;
   logic        tr;
-  logic        show_result; //SW[9] cambiar entre instrucción y resultado 
+  logic        show_result; // SW[9] cambiar entre instrucción y resultado 
   
   // Configuración de controles
-  // KEY[0] actúa como el reloj manual (activo bajo, por eso se niega)
-  assign clk = ~KEY[0];
-  // KEY[1] activa el reset (activo bajo)
-  assign reset = ~KEY[1];
-  // SW[1] se mantiene para el modo 'trace'
-  assign tr = SW[1];
-  assign show_result = SW[9]; //mostrar el resultado
+  assign clk = ~KEY[0];           // KEY[0] como reloj manual (activo bajo)
+  assign reset = ~KEY[1];         // KEY[1] como reset (activo bajo)
+  assign tr = SW[1];              // SW[1] para modo trace
+  assign show_result = SW[9];     // SW[9] para mostrar resultado vs instrucción
   
   
   // ========== SEÑALES DEL PROCESADOR ==========
@@ -67,7 +64,7 @@ module monocycle (
   
   assign subsra = alu_op[3];
   
-    // Multiplexores
+  // Multiplexores
   assign aluOperandA = rs1Data;  // Por ahora siempre rs1
   assign aluOperandB = alu_b_src ? immediate : rs2Data;
   
@@ -81,13 +78,13 @@ module monocycle (
     endcase
   end
   
-  
-  // LEDs: Muestra PC[7:0] en los bits bajos y los 2 bits más altos de instrucción
+  // LEDs: Muestra PC[7:0] en los bits bajos y los 2 bits de instrucción
   assign LEDR[7:0] = pc_current[7:0];
-  assign LEDR[9:8] = instruction[1:0]; //31:30
+  assign LEDR[9:8] = instruction[1:0];
   
   // ========== MÓDULOS DEL PROCESADOR ==========
   
+  // Program Counter
   pc program_counter (
     .next_address(pc_next),
     .clk(clk),
@@ -96,25 +93,23 @@ module monocycle (
     .address(pc_current)
   );
   
+  // Sumador PC + 4
   sumador pc_adder (
     .input_1(pc_current),
-    .output_32(pc_next)
+    .output_32(pc_sum)  // ¡CONECTAR LA SALIDA!
   );
+  
+  // Lógica para PC next (considera reset)
   assign pc_next = reset ? 32'h00000000 : pc_sum;
   
+  // Memoria de instrucciones
   instruction_memory imem (
     .address(pc_current),
     .instruction(instruction)
   );
   
-  // El resto de los módulos del procesador (decoder, control_unit, etc.)
-  // se conectarían aquí. Asumimos que están definidos en otros archivos.
-  
-  // ========== DECODIFICADORES 7 SEGMENTOS ==========
-  // Muestra los 24 bits menos significativos de la instrucción.
-  // Si 'reset' está activo (KEY[1] presionado), muestra '0' en todos los displays.
-  
-    instruction_decoder decoder (
+  // Decodificador de instrucciones
+  instruction_decoder decoder (
     .instruction(instruction),
     .opcode(opcode),
     .rd(rd),
@@ -124,6 +119,7 @@ module monocycle (
     .funct7(funct7)
   );
   
+  // Unidad de control
   control_unit ctrl (
     .opcode(opcode),
     .funct3(funct3),
@@ -139,12 +135,14 @@ module monocycle (
     .ru_data_src(ru_data_src)
   );
   
+  // Generador de inmediatos
   immediate_generator imm_gen (
     .instruction(instruction),
     .imm_src(imm_src),
     .immediate(immediate)
   );
   
+  // Banco de registros
   registerUnit reg_file (
     .rs1(rs1),
     .rs2(rs2),
@@ -157,12 +155,23 @@ module monocycle (
     .rs2Data(rs2Data)
   );
   
+  // ALU
   alu alu_unit (
     .operand1(aluOperandA),
     .operand2(aluOperandB),
     .funct3(funct3),
     .subsra(subsra),
     .result(aluResult)
+  );
+  
+  // ¡INSTANCIAR MEMORIA DE DATOS! (FALTABA)
+  data_memory dmem (
+    .clk(clk),
+    .address(aluResult),        // Dirección = resultado ALU (rs1 + imm)
+    .write_data(rs2Data),       // Dato a escribir = rs2
+    .write_enable(dm_write),    // Habilitador de escritura
+    .dm_ctrl(dm_ctrl),          // Control de tamaño/signo
+    .read_data(memReadData)     // Dato leído
   );
   
   // ========== DECODIFICADORES 7 SEGMENTOS ==========
@@ -176,12 +185,13 @@ module monocycle (
   logic [6:0] seg0, seg1, seg2, seg3, seg4, seg5;
   logic [6:0] ZERO_7SEG = 7'b1000000; // Código para mostrar '0'
 
-  hex_to_7seg display0 (.hex(instruction[3:0]),   .seg(seg0));
-  hex_to_7seg display1 (.hex(instruction[7:4]),   .seg(seg1));
-  hex_to_7seg display2 (.hex(instruction[11:8]),  .seg(seg2));
-  hex_to_7seg display3 (.hex(instruction[15:12]), .seg(seg3));
-  hex_to_7seg display4 (.hex(instruction[19:16]), .seg(seg4));
-  hex_to_7seg display5 (.hex(instruction[23:20]), .seg(seg5));
+  // ¡USAR display_data en lugar de instruction!
+  hex_to_7seg display0 (.hex(display_data[3:0]),   .seg(seg0));
+  hex_to_7seg display1 (.hex(display_data[7:4]),   .seg(seg1));
+  hex_to_7seg display2 (.hex(display_data[11:8]),  .seg(seg2));
+  hex_to_7seg display3 (.hex(display_data[15:12]), .seg(seg3));
+  hex_to_7seg display4 (.hex(display_data[19:16]), .seg(seg4));
+  hex_to_7seg display5 (.hex(display_data[23:20]), .seg(seg5));
 
   assign HEX0 = reset ? ZERO_7SEG : seg0;
   assign HEX1 = reset ? ZERO_7SEG : seg1;
