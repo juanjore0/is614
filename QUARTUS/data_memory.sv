@@ -16,16 +16,21 @@ module data_memory (
   logic [7:0]  byte_data;
   logic [15:0] half_data;
   
-  // Dirección word-aligned
+  // Dirección word-aligned - ASEGURAR QUE ESTÉ EN RANGO
   logic [5:0] word_addr;
-  assign word_addr = address[7:2];
+  assign word_addr = address[7:2];  // Bits [7:2] para 64 palabras
   
   // Selección de byte y halfword
   logic [1:0] byte_offset;
   assign byte_offset = address[1:0];
   
-  // Lectura de palabra completa
-  assign raw_data = memory[word_addr];
+  // Lectura de palabra completa - CON PROTECCIÓN DE RANGO
+  always_comb begin
+    if (word_addr < 64)
+      raw_data = memory[word_addr];
+    else
+      raw_data = 32'hDEADBEEF;  // Valor de debug para direcciones inválidas
+  end
   
   // Extracción de byte según offset
   always_comb begin
@@ -34,6 +39,7 @@ module data_memory (
       2'b01: byte_data = raw_data[15:8];
       2'b10: byte_data = raw_data[23:16];
       2'b11: byte_data = raw_data[31:24];
+      default: byte_data = 8'h00;
     endcase
   end
   
@@ -42,6 +48,7 @@ module data_memory (
     case (address[1])
       1'b0: half_data = raw_data[15:0];
       1'b1: half_data = raw_data[31:16];
+      default: half_data = 16'h0000;
     endcase
   end
   
@@ -64,13 +71,13 @@ module data_memory (
         read_data = {16'b0, half_data};
       
       default:
-        read_data = raw_data;
+        read_data = 32'h00000000;  // Valor por defecto seguro
     endcase
   end
   
   // Escritura síncrona (para futuras instrucciones Store)
   always_ff @(posedge clk) begin
-    if (write_enable) begin
+    if (write_enable && word_addr < 64) begin
       case (dm_ctrl)
         3'b000: begin // SB - Store Byte
           case (byte_offset)
@@ -97,7 +104,12 @@ module data_memory (
   
   // Inicialización con datos de prueba
   initial begin
-    // Inicializar algunos valores para testing
+    // IMPORTANTE: Inicializar TODO el array primero
+    for (int i = 0; i < 64; i++) begin
+      memory[i] = 32'h00000000;
+    end
+    
+    // Luego establecer valores de prueba
     memory[0]  = 32'h12345678;  // Dirección 0x00
     memory[1]  = 32'hABCDEF00;  // Dirección 0x04
     memory[2]  = 32'h00000064;  // Dirección 0x08 = 100 decimal
@@ -105,12 +117,19 @@ module data_memory (
     memory[4]  = 32'h000000FF;  // Dirección 0x10 = 255
     memory[5]  = 32'h80000000;  // Dirección 0x14 = número negativo
     
-    // Resto en cero
-    for (int i = 6; i < 64; i++) begin
-      memory[i] = 32'h00000000;
-    end
-    
     $display("=== Memoria de datos inicializada ===");
+    $display("memory[0] = 0x%h", memory[0]);
+    $display("memory[1] = 0x%h", memory[1]);
+    $display("memory[2] = 0x%h", memory[2]);
+    $display("memory[3] = 0x%h", memory[3]);
+  end
+  
+  // DEBUG: Monitorear lecturas de LW
+  always @(posedge clk) begin
+    if (!write_enable && dm_ctrl == 3'b010) begin  // LW
+      $display("[DEBUG LW] Tiempo=%0t addr=0x%h word_addr=%0d raw_data=0x%h read_data=0x%h", 
+               $time, address, word_addr, raw_data, read_data);
+    end
   end
 
 endmodule

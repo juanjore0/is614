@@ -164,7 +164,7 @@ module monocycle (
     .result(aluResult)
   );
   
-  // ¡INSTANCIAR MEMORIA DE DATOS!
+  // ¡INSTANCIAR MEMORIA DE DATOS! (FALTABA)
   data_memory dmem (
     .clk(clk),
     .address(aluResult),        // Dirección = resultado ALU (rs1 + imm)
@@ -177,10 +177,12 @@ module monocycle (
   // ========== DECODIFICADORES 7 SEGMENTOS ==========
   // SW[9] selecciona qué mostrar:
   // 0 = instrucción en hexadecimal
-  // 1 = resultado de la ALU en hexadecimal
+  // 1 = dato que se escribirá en el registro (ruWriteData)
+  //    - Para tipo R e I-Inmediato: resultado ALU
+  //    - Para tipo I-Load: dato leído de memoria
   
   logic [31:0] display_data;
-  assign display_data = show_result ? aluResult : instruction;
+  assign display_data = show_result ? ruWriteData : instruction;
   
   logic [6:0] seg0, seg1, seg2, seg3, seg4, seg5;
   logic [6:0] ZERO_7SEG = 7'b1000000; // Código para mostrar '0'
