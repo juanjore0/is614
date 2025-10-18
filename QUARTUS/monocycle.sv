@@ -5,13 +5,11 @@ module monocycle (
   input  logic [3:0]  KEY,         // Botones (lógica negada)
   input  logic [9:0]  SW,          // Switches
   
-  // Salidas a displays de 7 segmentos
+  // Salidas a displays de 7 segmentos (SOLO 4 DISPLAYS)
   output logic [6:0]  HEX0,        // dato[3:0]
   output logic [6:0]  HEX1,        // dato[7:4]
   output logic [6:0]  HEX2,        // dato[11:8]
   output logic [6:0]  HEX3,        // dato[15:12]
-  output logic [6:0]  HEX4,        // dato[19:16]
-  output logic [6:0]  HEX5,        // dato[23:20]
   
   // LEDs para debug
   output logic [9:0]  LEDR         // PC y bits de instrucción
@@ -21,13 +19,15 @@ module monocycle (
   logic        clk;
   logic        reset;
   logic        tr;
-  logic        show_result; // SW[9] cambiar entre instrucción y resultado 
+  logic        show_result;    // SW[9] cambiar entre instrucción y resultado
+  logic        show_high_bits; // SW[8] cambiar entre bits bajos y altos
   
   // Configuración de controles
-  assign clk = ~KEY[0];           // KEY[0] como reloj manual (activo bajo)
-  assign reset = ~KEY[1];         // KEY[1] como reset (activo bajo)
-  assign tr = SW[1];              // SW[1] para modo trace
-  assign show_result = SW[9];     // SW[9] para mostrar resultado vs instrucción
+  assign clk = ~KEY[0];              // KEY[0] como reloj manual (activo bajo)
+  assign reset = ~KEY[1];            // KEY[1] como reset (activo bajo)
+  assign tr = SW[1];                 // SW[1] para modo trace
+  assign show_result = SW[9];        // SW[9]: 0=instrucción, 1=resultado
+  assign show_high_bits = SW[8];     // SW[8]: 0=bits[15:0], 1=bits[31:16]
   
   
   // ========== SEÑALES DEL PROCESADOR ==========
@@ -96,7 +96,7 @@ module monocycle (
   // Sumador PC + 4
   sumador pc_adder (
     .input_1(pc_current),
-    .output_32(pc_sum)  // ¡CONECTAR LA SALIDA!
+    .output_32(pc_sum)
   );
   
   // Lógica para PC next (considera reset)
@@ -164,7 +164,7 @@ module monocycle (
     .result(aluResult)
   );
   
-  // ¡INSTANCIAR MEMORIA DE DATOS! (FALTABA)
+  // Memoria de datos
   data_memory dmem (
     .clk(clk),
     .address(aluResult),        // Dirección = resultado ALU (rs1 + imm)
@@ -174,32 +174,39 @@ module monocycle (
     .read_data(memReadData)     // Dato leído
   );
   
-  // ========== DECODIFICADORES 7 SEGMENTOS ==========
-  // SW[9] selecciona qué mostrar:
-  // 0 = instrucción en hexadecimal
-  // 1 = dato que se escribirá en el registro (ruWriteData)
-  //    - Para tipo R e I-Inmediato: resultado ALU
-  //    - Para tipo I-Load: dato leído de memoria
+  // ========== DECODIFICADORES 7 SEGMENTOS (4 DISPLAYS) ==========
+  // SW[9] selecciona el dato base:
+  //   0 = instrucción en hexadecimal
+  //   1 = dato que se escribirá en el registro (ruWriteData)
+  // SW[8] selecciona qué 16 bits mostrar:
+  //   0 = bits [15:0] (4 dígitos menos significativos)
+  //   1 = bits [31:16] (4 dígitos más significativos)
   
-  logic [31:0] display_data;
-  assign display_data = show_result ? ruWriteData : instruction;
+  logic [31:0] display_data_full;  // Dato completo (32 bits)
+  logic [15:0] display_data;       // Dato a mostrar en displays (16 bits)
   
-  logic [6:0] seg0, seg1, seg2, seg3, seg4, seg5;
+  // Selección del dato base
+  assign display_data_full = show_result ? ruWriteData : instruction;
+  
+  // Selección de qué 16 bits mostrar
+  always_comb begin
+    if (show_high_bits)
+      display_data = display_data_full[31:16];  // 4 dígitos altos
+    else
+      display_data = display_data_full[15:0];   // 4 dígitos bajos
+  end
+  
+  logic [6:0] seg0, seg1, seg2, seg3;
   logic [6:0] ZERO_7SEG = 7'b1000000; // Código para mostrar '0'
 
-  // ¡USAR display_data en lugar de instruction!
   hex_to_7seg display0 (.hex(display_data[3:0]),   .seg(seg0));
   hex_to_7seg display1 (.hex(display_data[7:4]),   .seg(seg1));
   hex_to_7seg display2 (.hex(display_data[11:8]),  .seg(seg2));
   hex_to_7seg display3 (.hex(display_data[15:12]), .seg(seg3));
-  hex_to_7seg display4 (.hex(display_data[19:16]), .seg(seg4));
-  hex_to_7seg display5 (.hex(display_data[23:20]), .seg(seg5));
 
   assign HEX0 = reset ? ZERO_7SEG : seg0;
   assign HEX1 = reset ? ZERO_7SEG : seg1;
   assign HEX2 = reset ? ZERO_7SEG : seg2;
   assign HEX3 = reset ? ZERO_7SEG : seg3;
-  assign HEX4 = reset ? ZERO_7SEG : seg4;
-  assign HEX5 = reset ? ZERO_7SEG : seg5;
 
 endmodule

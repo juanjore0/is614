@@ -13,8 +13,8 @@ module instruction_memory (
     // 0x00: ADD x1, x0, x0  -> x1 = 0
     memory[0] = 32'h000000B3;
     
-    // 0x04: ADD x2, x1, x1  -> x2 = 0 (después será útil)
-    memory[1] = 32'h001080B3;
+    // 0x04: ADD x2, x1, x1  -> x2 = 0
+    memory[1] = 32'h00108133;
     
     // --- TIPO I-Inmediato: Preparar registros base ---
     // 0x08: ADDI x3, x0, 0   -> x3 = 0 (dirección base)
@@ -38,7 +38,7 @@ module instruction_memory (
     
     // 0x20: LB x9, 0(x3)     -> x9 = 0x00000078 (signed byte)
     // Formato: imm[11:0]=0, rs1=x3, funct3=000 (LB), rd=x9
-    memory[8] = 32'h00018483;  // CORREGIDO
+    memory[8] = 32'h00018403;  // ¡CORREGIDO! Era 0x00018483
     
     // 0x24: LBU x10, 0(x3)   -> x10 = 0x00000078 (unsigned byte)
     // funct3=100 (LBU)
