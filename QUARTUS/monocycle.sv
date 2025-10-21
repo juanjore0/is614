@@ -84,7 +84,9 @@ module monocycle (
   
   // ========== MÓDULOS DEL PROCESADOR ==========
   
-  // Program Counter
+  // Program Counter - ELIMINAMOS LA LÓGICA DE RESET DUPLICADA
+  assign pc_next = pc_sum;  // Siempre usa pc_sum, el reset lo maneja el módulo pc
+  
   pc program_counter (
     .next_address(pc_next),
     .clk(clk),
@@ -98,9 +100,6 @@ module monocycle (
     .input_1(pc_current),
     .output_32(pc_sum)
   );
-  
-  // Lógica para PC next (considera reset)
-  assign pc_next = reset ? 32'h00000000 : pc_sum;
   
   // Memoria de instrucciones
   instruction_memory imem (
@@ -142,12 +141,13 @@ module monocycle (
     .immediate(immediate)
   );
   
-  // Banco de registros
+  // Banco de registros - AGREGAMOS RESET
   registerUnit reg_file (
     .rs1(rs1),
     .rs2(rs2),
     .rd(rd),
     .clk(clk),
+    .reset(reset),  // Agregamos reset aquí
     .writeEnable(ru_write),
     .data(ruWriteData),
     .tr(tr),
