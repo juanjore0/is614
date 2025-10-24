@@ -9,6 +9,12 @@ module immediate_generator (
     case (imm_src)
       3'b000: // Tipo I (ADDI, SLTI, XORI, ORI, ANDI, SLLI, SRLI, SRAI)
         immediate = {{20{instruction[31]}}, instruction[31:20]};
+		      
+		3'b001: begin // Tipo S (STORE) 
+        // imm[11:5] = instruction[31:25]
+        // imm[4:0]  = instruction[11:7]
+        immediate = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+      end
       
       
       default:

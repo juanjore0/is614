@@ -69,6 +69,18 @@ module control_unit (
         br_op        = 5'b00xxx;
         ru_data_src  = 2'b01;
       end
+		
+		7'b0100011: begin // TIPO S (Store)
+		  ru_write     = 1'b0;    // NO escribir en registros
+        alu_op       = 4'b0000; // ADD (calcular dirección)
+        imm_src      = 3'b001;  // Inmediato tipo S
+        alu_a_src    = 2'b00;   // rs1 (registro base)
+        alu_b_src    = 1'b1;    // Usar inmediato (offset)
+        dm_write     = 1'b1;    // SÍ escribir en memoria
+        dm_ctrl      = funct3;  // Control según tipo de store (SB, SH, SW)
+        br_op        = 5'b00xxx;
+        ru_data_src  = 2'bxx;   // No importa, no escribimos en registros
+      end
       
       default: begin
         ru_write     = 1'b0;
