@@ -1,50 +1,41 @@
 // ============================================================
-// risc_debug_display.sv
-// Display de Debug para RISC-V - Muestra múltiples ventanas de información
-// Compatible con resolución 1280x800
+// risc_debug_display.sv (REGISTERS view added)
+// Display de Debug para RISC-V - Vista de registros x0..x31
 // ============================================================
 
 module risc_debug_display(
-    input logic clock,                 // 50 MHz clock
-    input logic sw0,                   // reset
-    input logic sw1, sw2, sw3, sw4, sw5, // switches para control
-    
-    // Entradas de debug desde RISC-V
-    input logic [31:0] pc,            // Program Counter
-    input logic [31:0] instruction,   // Instrucción actual
-    input logic [31:0] alu_result,    // Resultado de ALU
-    input logic [31:0] reg_data1,     // Datos registro 1
-    input logic [31:0] reg_data2,     // Datos registro 2
-    input logic [31:0] mem_data,      // Datos de memoria
-    input logic [31:0] clock_counter, // Contador de ciclos
-    
+    input  logic        clock,                 // 50 MHz
+    input  logic        sw0,                   // reset
+    input  logic        sw1, sw2, sw3, sw4, sw5,
+
+    // Demo-only: registros simulados
+    input  logic [31:0] regs_demo [0:31],
+    input  logic [31:0] changed_mask,         // bit i = registro i ha cambiado recientemente
+
     // Salidas VGA
-    output logic [7:0] vga_red,
-    output logic [7:0] vga_green,
-    output logic [7:0] vga_blue,
-    output logic vga_hsync,
-    output logic vga_vsync,
-    output logic vga_clock
+    output logic [7:0]  vga_red,
+    output logic [7:0]  vga_green,
+    output logic [7:0]  vga_blue,
+    output logic        vga_hsync,
+    output logic        vga_vsync,
+    output logic        vga_clock
 );
 
     // ============================================================
-    // Señales VGA
+    // Señales VGA base
     // ============================================================
     logic [10:0] x;
     logic [9:0]  y;
-    logic videoOn;
-    logic vgaclk;
+    logic        videoOn;
+    logic        vgaclk;
 
-    // PLL VGA
     clock1280x800 vgaclock(
         .clock50(clock),
         .reset(sw0),
         .vgaclk(vgaclk)
     );
-
     assign vga_clock = vgaclk;
 
-    // Controlador VGA
     vga_controller_1280x800 ctrl(
         .clk(vgaclk),
         .reset(sw0),
@@ -56,12 +47,12 @@ module risc_debug_display(
     );
 
     // ============================================================
-    // Sistema de renderizado de texto
+    // Font renderer
     // ============================================================
     logic [7:0] ascii_code;
     logic [3:0] row_in_char;
     logic [2:0] col_in_char;
-    logic pixel_on;
+    logic       pixel_on;
 
     font_renderer font_inst (
         .clk(vgaclk),
@@ -72,355 +63,206 @@ module risc_debug_display(
     );
 
     // ============================================================
-    // Definición de ventanas de debug
+    // Parámetros y ventanas
     // ============================================================
-    parameter CHAR_W = 8;
-    parameter CHAR_H = 16;
-    parameter MARGIN = 10;
-    
-    // Ventana 1: PC y Instrucción (esquina superior izquierda)
-    parameter WIN1_X = MARGIN;
-    parameter WIN1_Y = MARGIN;
-    parameter WIN1_W = 40 * CHAR_W; // 40 caracteres de ancho
-    parameter WIN1_H = 6 * CHAR_H;  // 6 líneas de alto
-    
-    // Ventana 2: ALU y Registros (esquina superior derecha)
-    parameter WIN2_X = WIN1_X + WIN1_W + MARGIN;
-    parameter WIN2_Y = MARGIN;
-    parameter WIN2_W = 40 * CHAR_W;
-    parameter WIN2_H = 8 * CHAR_H;
-    
-    // Ventana 3: Memoria de datos (esquina inferior izquierda)
-    parameter WIN3_X = MARGIN;
-    parameter WIN3_Y = WIN1_Y + WIN1_H + MARGIN;
-    parameter WIN3_W = 40 * CHAR_W;
-    parameter WIN3_H = 10 * CHAR_H;
-    
-    // Ventana 4: Clock y estado (esquina inferior derecha)
-    parameter WIN4_X = WIN2_X;
-    parameter WIN4_Y = WIN2_Y + WIN2_H + MARGIN;
-    parameter WIN4_W = 40 * CHAR_W;
-    parameter WIN4_H = 4 * CHAR_H;
+    localparam int CHAR_W = 8;
+    localparam int CHAR_H = 16;
 
-    // ============================================================
-    // Detección de ventanas activas
-    // ============================================================
-    logic in_win1, in_win2, in_win3, in_win4;
-    
-    assign in_win1 = (x >= WIN1_X && x < WIN1_X + WIN1_W && y >= WIN1_Y && y < WIN1_Y + WIN1_H);
-    assign in_win2 = (x >= WIN2_X && x < WIN2_X + WIN2_W && y >= WIN2_Y && y < WIN2_Y + WIN2_H);
-    assign in_win3 = (x >= WIN3_X && x < WIN3_X + WIN3_W && y >= WIN3_Y && y < WIN3_Y + WIN3_H);
-    assign in_win4 = (x >= WIN4_X && x < WIN4_X + WIN4_W && y >= WIN4_Y && y < WIN4_Y + WIN4_H);
-    
-    logic in_any_window;
-    assign in_any_window = in_win1 || in_win2 || in_win3 || in_win4;
+    // Ventana REGISTERS: ocupa gran área lado derecho
+    localparam int REG_X  = 40;               // px
+    localparam int REG_Y  = 40;               // px
+    localparam int REG_COLS = 44;             // caracteres por columna aprox
+    localparam int REG_ROWS = 18;             // líneas visibles
+    localparam int REG_W  = REG_COLS * CHAR_W;
+    localparam int REG_H  = (REG_ROWS + 2) * CHAR_H; // +2 para título y línea
 
-    // ============================================================
-    // Cálculo de posición de caracter en ventana activa
-    // ============================================================
-    logic [5:0] char_col, char_row;
-    logic [10:0] rel_x;
-    logic [9:0]  rel_y;
-    
+    // Doble columna de 16 regs cada una
+    localparam int REG_COL_SPACING = (REG_COLS+2)*CHAR_W; // espacio entre columnas
+
+    // Área total de dos columnas
+    localparam int REG2_W = REG_W*1 + REG_COL_SPACING + REG_W*1;
+
+    logic in_regs;
+    assign in_regs = (x >= REG_X && x < REG_X + REG2_W && y >= REG_Y && y < REG_Y + REG_H);
+
+    // Coordenadas relativas dentro de la ventana de registros
+    logic [10:0] rx; logic [9:0] ry;
     always_comb begin
-        if (in_win1) begin
-            rel_x = x - WIN1_X;
-            rel_y = y - WIN1_Y;
-        end else if (in_win2) begin
-            rel_x = x - WIN2_X;
-            rel_y = y - WIN2_Y;
-        end else if (in_win3) begin
-            rel_x = x - WIN3_X;
-            rel_y = y - WIN3_Y;
-        end else if (in_win4) begin
-            rel_x = x - WIN4_X;
-            rel_y = y - WIN4_Y;
-        end else begin
-            rel_x = 0;
-            rel_y = 0;
-        end
-        
-        char_col = rel_x / CHAR_W;
-        char_row = rel_y / CHAR_H;
+        rx = (x >= REG_X) ? (x - REG_X) : 11'd0;
+        ry = (y >= REG_Y) ? (y - REG_Y) : 10'd0;
     end
-    
-    assign row_in_char = rel_y % CHAR_H;
-    assign col_in_char = rel_x % CHAR_W;
+
+    // Posición de caracter
+    logic [6:0] ch_col; // hasta ~88 cols con dos columnas
+    logic [5:0] ch_row; // ~20 filas
+    assign ch_col = rx / CHAR_W;
+    assign ch_row = ry / CHAR_H;
+
+    assign row_in_char = ry % CHAR_H;
+    assign col_in_char = rx % CHAR_W;
 
     // ============================================================
-    // Función para convertir nibble a ASCII hex
+    // Utilidades de texto
     // ============================================================
-    function automatic [7:0] nibble_to_ascii(input [3:0] nibble);
-        if (nibble < 10)
-            nibble_to_ascii = 8'd48 + nibble;  // '0'-'9'
-        else
-            nibble_to_ascii = 8'd65 + nibble - 10; // 'A'-'F'
+    function automatic [7:0] to_hex(input [3:0] nib);
+        to_hex = (nib < 10) ? (8'd48 + nib) : (8'd55 + nib); // '0'..'9','A'..'F'
+    endfunction
+
+    function automatic [7:0] to_dec2(input integer v);
+        // convierte 0..31 a dos dígitos ('00'..'31'), devuelve primer dígito para col actual
+        to_dec2 = 8'd48 + v; // no se usa aquí; se ensamblan manualmente abajo
+    endfunction
+
+    // Nombre ABI por índice xN en 3 chars máx (relleno con espacios)
+    function automatic [23:0] abi_name3(input int idx);
+        // devuelve {c0,c1,c2} en ASCII
+        case (idx)
+            0:  abi_name3 = {"z","e","r"}; // zero -> abreviado
+            1:  abi_name3 = {"r","a"," "};
+            2:  abi_name3 = {"s","p"," "};
+            3:  abi_name3 = {"g","p"," "};
+            4:  abi_name3 = {"t","p"," "};
+            5:  abi_name3 = {"t","0"," "};
+            6:  abi_name3 = {"t","1"," "};
+            7:  abi_name3 = {"t","2"," "};
+            8:  abi_name3 = {"s","0"," "};
+            9:  abi_name3 = {"s","1"," "};
+            10: abi_name3 = {"a","0"," "};
+            11: abi_name3 = {"a","1"," "};
+            12: abi_name3 = {"a","2"," "};
+            13: abi_name3 = {"a","3"," "};
+            14: abi_name3 = {"a","4"," "};
+            15: abi_name3 = {"a","5"," "};
+            16: abi_name3 = {"a","6"," "};
+            17: abi_name3 = {"a","7"," "};
+            18: abi_name3 = {"s","2"," "};
+            19: abi_name3 = {"s","3"," "};
+            20: abi_name3 = {"s","4"," "};
+            21: abi_name3 = {"s","5"," "};
+            22: abi_name3 = {"s","6"," "};
+            23: abi_name3 = {"s","7"," "};
+            24: abi_name3 = {"s","8"," "};
+            25: abi_name3 = {"s","9"," "};
+            26: abi_name3 = {"s","1"}; // devuelve 3 chars; completar
+            27: abi_name3 = {"s","1","1"};
+            28: abi_name3 = {"t","3"," "};
+            29: abi_name3 = {"t","4"," "};
+            30: abi_name3 = {"t","5"," "};
+            31: abi_name3 = {"t","6"," "};
+            default: abi_name3 = {" "," "," "};
+        endcase
     endfunction
 
     // ============================================================
-    // Generación de contenido de texto
+    // Selección de qué caracter emitir en cada posición de la ventana
+    // Formato por línea: "abi (xNN): 0xXXXXXXXX"
+    // Dos columnas: col0 usa ch_col 0..(REG_COLS-1), col1 desplazada por REG_COL_SPACING/CHAR_W
     // ============================================================
+
+    // Determinar columna y fila
+    logic right_col;
+    logic [5:0] row_idx; // 0..15 -> x0..x15 en izq, x16..x31 en der
+    always_comb begin
+        right_col = (rx >= REG_W + REG_COL_SPACING/2); // punto de corte aproximado
+        row_idx   = (ch_row >= 2) ? (ch_row - 2) : 0; // dejar 2 líneas para título y separador
+    end
+
+    // Índice de registro que corresponde a esta fila/columna
+    int reg_idx;
+    always_comb begin
+        if (row_idx < 16) begin
+            reg_idx = right_col ? (row_idx + 16) : row_idx;
+        end else begin
+            reg_idx = -1; // fuera de rango
+        end
+    end
+
+    // Componer caracteres
+    logic [23:0] abi3;
+    logic [31:0] rv;
+    logic        reg_changed;
     always_comb begin
         ascii_code = 8'd32; // espacio por defecto
-        
-        if (in_win1) begin
-            // Ventana 1: PC e Instrucción
-            case (char_row)
-                0: begin // Título
-                    case (char_col)
-                        0: ascii_code = 8'd80;  // P
-                        1: ascii_code = 8'd67;  // C
-                        2: ascii_code = 8'd32;  // espacio
-                        3: ascii_code = 8'd38;  // &
-                        4: ascii_code = 8'd32;  // espacio
-                        5: ascii_code = 8'd73;  // I
-                        6: ascii_code = 8'd78;  // N
-                        7: ascii_code = 8'd83;  // S
-                        8: ascii_code = 8'd84;  // T
-                        9: ascii_code = 8'd82;  // R
-                        10: ascii_code = 8'd85; // U
-                        11: ascii_code = 8'd67; // C
-                        12: ascii_code = 8'd84; // T
-                        13: ascii_code = 8'd73; // I
-                        14: ascii_code = 8'd79; // O
-                        15: ascii_code = 8'd78; // N
-                        default: ascii_code = 8'd32;
-                    endcase
+        if (!in_regs) disable_regs: begin end else begin
+            // Título y línea
+            if (ch_row == 0) begin
+                case (ch_col)
+                    0: ascii_code = "R";
+                    1: ascii_code = "E";
+                    2: ascii_code = "G";
+                    3: ascii_code = "I";
+                    4: ascii_code = "S";
+                    5: ascii_code = "T";
+                    6: ascii_code = "E";
+                    7: ascii_code = "R";
+                    8: ascii_code = "S";
+                    default: ascii_code = 8'd32;
+                endcase
+            end else if (ch_row == 1) begin
+                ascii_code = 8'd45; // '-'
+            end else if (reg_idx >= 0) begin
+                abi3        = abi_name3(reg_idx);
+                rv          = regs_demo[reg_idx];
+                reg_changed = changed_mask[reg_idx];
+
+                // Horizontal offset por columna
+                int base_col;
+                base_col = right_col ? (REG_COLS + 2) : 0;
+                // Columnas lógicas dentro del bloque
+                int c = ch_col - base_col;
+
+                // abi (3 chars)
+                if (c == 0)      ascii_code = abi3[23:16];
+                else if (c == 1) ascii_code = abi3[15:8];
+                else if (c == 2) ascii_code = abi3[7:0];
+                // espacio
+                else if (c == 3) ascii_code = 8'd32;
+                // (
+                else if (c == 4) ascii_code = "(";
+                // x
+                else if (c == 5) ascii_code = "x";
+                // dec NN
+                else if (c == 6) ascii_code = 8'd48 + (reg_idx/10);
+                else if (c == 7) ascii_code = 8'd48 + (reg_idx%10);
+                // )
+                else if (c == 8) ascii_code = ")";
+                // :
+                else if (c == 9) ascii_code = ":";
+                else if (c == 10) ascii_code = 8'd32;
+                // 0x
+                else if (c == 11) ascii_code = "0";
+                else if (c == 12) ascii_code = "x";
+                // 8 hex nibbles
+                else if (c >= 13 && c <= 20) begin
+                    int idx = 31 - 4*(c-13);
+                    ascii_code = to_hex(rv[idx -: 4]);
+                end else begin
+                    ascii_code = 8'd32;
                 end
-                1: ascii_code = 8'd45; // línea separadora '-'
-                2: begin // PC: valor
-                    case (char_col)
-                        0: ascii_code = 8'd80;  // P
-                        1: ascii_code = 8'd67;  // C
-                        2: ascii_code = 8'd58;  // :
-                        3: ascii_code = 8'd32;  // espacio
-                        4: ascii_code = 8'd48;  // 0
-                        5: ascii_code = 8'd120; // x
-                        6: ascii_code = nibble_to_ascii(pc[31:28]);
-                        7: ascii_code = nibble_to_ascii(pc[27:24]);
-                        8: ascii_code = nibble_to_ascii(pc[23:20]);
-                        9: ascii_code = nibble_to_ascii(pc[19:16]);
-                        10: ascii_code = nibble_to_ascii(pc[15:12]);
-                        11: ascii_code = nibble_to_ascii(pc[11:8]);
-                        12: ascii_code = nibble_to_ascii(pc[7:4]);
-                        13: ascii_code = nibble_to_ascii(pc[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                3: begin // Instrucción: valor
-                    case (char_col)
-                        0: ascii_code = 8'd73;  // I
-                        1: ascii_code = 8'd78;  // N
-                        2: ascii_code = 8'd83;  // S
-                        3: ascii_code = 8'd84;  // T
-                        4: ascii_code = 8'd58;  // :
-                        5: ascii_code = 8'd32;  // espacio
-                        6: ascii_code = 8'd48;  // 0
-                        7: ascii_code = 8'd120; // x
-                        8: ascii_code = nibble_to_ascii(instruction[31:28]);
-                        9: ascii_code = nibble_to_ascii(instruction[27:24]);
-                        10: ascii_code = nibble_to_ascii(instruction[23:20]);
-                        11: ascii_code = nibble_to_ascii(instruction[19:16]);
-                        12: ascii_code = nibble_to_ascii(instruction[15:12]);
-                        13: ascii_code = nibble_to_ascii(instruction[11:8]);
-                        14: ascii_code = nibble_to_ascii(instruction[7:4]);
-                        15: ascii_code = nibble_to_ascii(instruction[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                default: ascii_code = 8'd32;
-            endcase
-        end
-        
-        else if (in_win2) begin
-            // Ventana 2: ALU y Registros
-            case (char_row)
-                0: begin // Título ALU
-                    case (char_col)
-                        0: ascii_code = 8'd65;  // A
-                        1: ascii_code = 8'd76;  // L
-                        2: ascii_code = 8'd85;  // U
-                        3: ascii_code = 8'd32;  // espacio
-                        4: ascii_code = 8'd38;  // &
-                        5: ascii_code = 8'd32;  // espacio
-                        6: ascii_code = 8'd82;  // R
-                        7: ascii_code = 8'd69;  // E
-                        8: ascii_code = 8'd71;  // G
-                        9: ascii_code = 8'd83;  // S
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                1: ascii_code = 8'd45; // línea separadora
-                2: begin // ALU Result
-                    case (char_col)
-                        0: ascii_code = 8'd65;  // A
-                        1: ascii_code = 8'd76;  // L
-                        2: ascii_code = 8'd85;  // U
-                        3: ascii_code = 8'd58;  // :
-                        4: ascii_code = 8'd32;  // espacio
-                        5: ascii_code = 8'd48;  // 0
-                        6: ascii_code = 8'd120; // x
-                        7: ascii_code = nibble_to_ascii(alu_result[31:28]);
-                        8: ascii_code = nibble_to_ascii(alu_result[27:24]);
-                        9: ascii_code = nibble_to_ascii(alu_result[23:20]);
-                        10: ascii_code = nibble_to_ascii(alu_result[19:16]);
-                        11: ascii_code = nibble_to_ascii(alu_result[15:12]);
-                        12: ascii_code = nibble_to_ascii(alu_result[11:8]);
-                        13: ascii_code = nibble_to_ascii(alu_result[7:4]);
-                        14: ascii_code = nibble_to_ascii(alu_result[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                3: begin // Registro 1
-                    case (char_col)
-                        0: ascii_code = 8'd82;  // R
-                        1: ascii_code = 8'd49;  // 1
-                        2: ascii_code = 8'd58;  // :
-                        3: ascii_code = 8'd32;  // espacio
-                        4: ascii_code = 8'd48;  // 0
-                        5: ascii_code = 8'd120; // x
-                        6: ascii_code = nibble_to_ascii(reg_data1[31:28]);
-                        7: ascii_code = nibble_to_ascii(reg_data1[27:24]);
-                        8: ascii_code = nibble_to_ascii(reg_data1[23:20]);
-                        9: ascii_code = nibble_to_ascii(reg_data1[19:16]);
-                        10: ascii_code = nibble_to_ascii(reg_data1[15:12]);
-                        11: ascii_code = nibble_to_ascii(reg_data1[11:8]);
-                        12: ascii_code = nibble_to_ascii(reg_data1[7:4]);
-                        13: ascii_code = nibble_to_ascii(reg_data1[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                4: begin // Registro 2
-                    case (char_col)
-                        0: ascii_code = 8'd82;  // R
-                        1: ascii_code = 8'd50;  // 2
-                        2: ascii_code = 8'd58;  // :
-                        3: ascii_code = 8'd32;  // espacio
-                        4: ascii_code = 8'd48;  // 0
-                        5: ascii_code = 8'd120; // x
-                        6: ascii_code = nibble_to_ascii(reg_data2[31:28]);
-                        7: ascii_code = nibble_to_ascii(reg_data2[27:24]);
-                        8: ascii_code = nibble_to_ascii(reg_data2[23:20]);
-                        9: ascii_code = nibble_to_ascii(reg_data2[19:16]);
-                        10: ascii_code = nibble_to_ascii(reg_data2[15:12]);
-                        11: ascii_code = nibble_to_ascii(reg_data2[11:8]);
-                        12: ascii_code = nibble_to_ascii(reg_data2[7:4]);
-                        13: ascii_code = nibble_to_ascii(reg_data2[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                default: ascii_code = 8'd32;
-            endcase
-        end
-        
-        else if (in_win3) begin
-            // Ventana 3: Memoria de datos
-            case (char_row)
-                0: begin // Título
-                    case (char_col)
-                        0: ascii_code = 8'd68;  // D
-                        1: ascii_code = 8'd65;  // A
-                        2: ascii_code = 8'd84;  // T
-                        3: ascii_code = 8'd65;  // A
-                        4: ascii_code = 8'd32;  // espacio
-                        5: ascii_code = 8'd77;  // M
-                        6: ascii_code = 8'd69;  // E
-                        7: ascii_code = 8'd77;  // M
-                        8: ascii_code = 8'd79;  // O
-                        9: ascii_code = 8'd82;  // R
-                        10: ascii_code = 8'd89; // Y
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                1: ascii_code = 8'd45; // línea separadora
-                2: begin // Datos de memoria
-                    case (char_col)
-                        0: ascii_code = 8'd77;  // M
-                        1: ascii_code = 8'd69;  // E
-                        2: ascii_code = 8'd77;  // M
-                        3: ascii_code = 8'd58;  // :
-                        4: ascii_code = 8'd32;  // espacio
-                        5: ascii_code = 8'd48;  // 0
-                        6: ascii_code = 8'd120; // x
-                        7: ascii_code = nibble_to_ascii(mem_data[31:28]);
-                        8: ascii_code = nibble_to_ascii(mem_data[27:24]);
-                        9: ascii_code = nibble_to_ascii(mem_data[23:20]);
-                        10: ascii_code = nibble_to_ascii(mem_data[19:16]);
-                        11: ascii_code = nibble_to_ascii(mem_data[15:12]);
-                        12: ascii_code = nibble_to_ascii(mem_data[11:8]);
-                        13: ascii_code = nibble_to_ascii(mem_data[7:4]);
-                        14: ascii_code = nibble_to_ascii(mem_data[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                default: ascii_code = 8'd32;
-            endcase
-        end
-        
-        else if (in_win4) begin
-            // Ventana 4: Clock counter
-            case (char_row)
-                0: begin // Título
-                    case (char_col)
-                        0: ascii_code = 8'd67;  // C
-                        1: ascii_code = 8'd76;  // L
-                        2: ascii_code = 8'd79;  // O
-                        3: ascii_code = 8'd67;  // C
-                        4: ascii_code = 8'd75;  // K
-                        5: ascii_code = 8'd32;  // espacio
-                        6: ascii_code = 8'd67;  // C
-                        7: ascii_code = 8'd79;  // O
-                        8: ascii_code = 8'd85;  // U
-                        9: ascii_code = 8'd78;  // N
-                        10: ascii_code = 8'd84; // T
-                        11: ascii_code = 8'd69; // E
-                        12: ascii_code = 8'd82; // R
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                1: ascii_code = 8'd45; // línea separadora
-                2: begin // Clock counter value
-                    case (char_col)
-                        0: ascii_code = 8'd67;  // C
-                        1: ascii_code = 8'd76;  // L
-                        2: ascii_code = 8'd75;  // K
-                        3: ascii_code = 8'd58;  // :
-                        4: ascii_code = 8'd32;  // espacio
-                        5: ascii_code = 8'd48;  // 0
-                        6: ascii_code = 8'd120; // x
-                        7: ascii_code = nibble_to_ascii(clock_counter[31:28]);
-                        8: ascii_code = nibble_to_ascii(clock_counter[27:24]);
-                        9: ascii_code = nibble_to_ascii(clock_counter[23:20]);
-                        10: ascii_code = nibble_to_ascii(clock_counter[19:16]);
-                        11: ascii_code = nibble_to_ascii(clock_counter[15:12]);
-                        12: ascii_code = nibble_to_ascii(clock_counter[11:8]);
-                        13: ascii_code = nibble_to_ascii(clock_counter[7:4]);
-                        14: ascii_code = nibble_to_ascii(clock_counter[3:0]);
-                        default: ascii_code = 8'd32;
-                    endcase
-                end
-                default: ascii_code = 8'd32;
-            endcase
+            end
         end
     end
 
     // ============================================================
-    // Color de salida VGA
+    // Color de salida: destaca registros cambiados
     // ============================================================
     always_comb begin
         if (~videoOn) begin
-            {vga_red, vga_green, vga_blue} = 24'h000000; // Negro
-        end else if (in_any_window && pixel_on) begin
-            // Texto blanco sobre fondo negro
-            {vga_red, vga_green, vga_blue} = 24'hFFFFFF;
-        end else if (in_any_window) begin
-            // Fondo de ventanas - gris oscuro
-            {vga_red, vga_green, vga_blue} = 24'h202020;
-        end else begin
-            // Fondo general - negro
             {vga_red, vga_green, vga_blue} = 24'h000000;
+        end else if (in_regs && pixel_on) begin
+            // Si este pixel pertenece a una línea de un registro que cambió, usa blanco; si no, gris claro
+            logic use_highlight;
+            use_highlight = 1'b0;
+            if (ch_row >= 2 && ch_row < 18) begin
+                int rid = right_col ? (ch_row-2+16) : (ch_row-2);
+                if (rid >=0 && rid < 32) use_highlight = changed_mask[rid];
+            end
+            if (use_highlight) {vga_red, vga_green, vga_blue} = 24'hFFFFFF; else {vga_red, vga_green, vga_blue} = 24'hC0C0C0;
+        end else if (in_regs) begin
+            {vga_red, vga_green, vga_blue} = 24'h202020; // fondo ventana
+        end else begin
+            {vga_red, vga_green, vga_blue} = 24'h000000; // fondo general
         end
     end
 
 endmodule
-
