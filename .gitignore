@@ -33,5 +33,10 @@ QUARTUS/incremental_db/
 QUARTUS/output_files/
 QUARTUS/simulation/
 
+VGA/db/
+VGA/incremental_db/
+VGA/output_files/
+VGA/simulation/
+
 # Ignorar locks de Quartus
 *.rdr.flock
