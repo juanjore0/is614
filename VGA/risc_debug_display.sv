@@ -1,16 +1,16 @@
 // ============================================================
-// risc_debug_display.sv (REGISTERS view added) - Quartus-friendly fix
-// Remove inline 'int' declarations inside always_comb cases.
+// risc_debug_display.sv (REGISTERS view added) - Quartus-pure always_comb
+// Display de Debug para RISC-V - Vista de registros x0..x31
 // ============================================================
 
 module risc_debug_display(
-    input  logic        clock,
-    input  logic        sw0,
+    input  logic        clock,                 // 50 MHz
+    input  logic        sw0,                   // reset
     input  logic        sw1, sw2, sw3, sw4, sw5,
 
     // Demo-only: registros simulados
     input  logic [31:0] regs_demo [0:31],
-    input  logic [31:0] changed_mask,
+    input  logic [31:0] changed_mask,         // bit i = registro i ha cambiado recientemente
 
     // Salidas VGA
     output logic [7:0]  vga_red,
@@ -68,20 +68,24 @@ module risc_debug_display(
     localparam int CHAR_W = 8;
     localparam int CHAR_H = 16;
 
-    // Ventana REGISTERS
-    localparam int REG_X  = 40;
-    localparam int REG_Y  = 40;
-    localparam int REG_COLS = 44;
-    localparam int REG_ROWS = 18;
+    // Ventana REGISTERS: ocupa gran área lado derecho
+    localparam int REG_X  = 40;               // px
+    localparam int REG_Y  = 40;               // px
+    localparam int REG_COLS = 44;             // caracteres por columna aprox
+    localparam int REG_ROWS = 18;             // líneas visibles
     localparam int REG_W  = REG_COLS * CHAR_W;
-    localparam int REG_H  = (REG_ROWS + 2) * CHAR_H;
-    localparam int REG_COL_SPACING = (REG_COLS+2)*CHAR_W;
+    localparam int REG_H  = (REG_ROWS + 2) * CHAR_H; // +2 para título y línea
+
+    // Doble columna de 16 regs cada una
+    localparam int REG_COL_SPACING = (REG_COLS+2)*CHAR_W; // espacio entre columnas
+
+    // Área total de dos columnas
     localparam int REG2_W = REG_W + REG_COL_SPACING + REG_W;
 
     logic in_regs;
     assign in_regs = (x >= REG_X && x < REG_X + REG2_W && y >= REG_Y && y < REG_Y + REG_H);
 
-    // Coordenadas relativas
+    // Coordenadas relativas dentro de la ventana de registros
     logic [10:0] rx; logic [9:0] ry;
     always_comb begin
         rx = (x >= REG_X) ? (x - REG_X) : 11'd0;
@@ -89,10 +93,11 @@ module risc_debug_display(
     end
 
     // Posición de caracter
-    logic [6:0] ch_col;
-    logic [5:0] ch_row;
+    logic [6:0] ch_col; // hasta ~88 cols con dos columnas
+    logic [5:0] ch_row; // ~20 filas
     assign ch_col = rx / CHAR_W;
     assign ch_row = ry / CHAR_H;
+
     assign row_in_char = ry % CHAR_H;
     assign col_in_char = rx % CHAR_W;
 
@@ -100,13 +105,14 @@ module risc_debug_display(
     // Utilidades de texto
     // ============================================================
     function automatic [7:0] to_hex(input [3:0] nib);
-        to_hex = (nib < 10) ? (8'd48 + nib) : (8'd55 + nib);
+        to_hex = (nib < 10) ? (8'd48 + nib) : (8'd55 + nib); // '0'..'9','A'..'F'
     endfunction
 
-    // Nombre ABI por índice (3 chars)
+    // Nombre ABI por índice xN en 3 chars máx (relleno con espacios)
     function automatic [23:0] abi_name3(input int idx);
+        // devuelve {c0,c1,c2} en ASCII
         case (idx)
-            0:  abi_name3 = {"z","e","r"};
+            0:  abi_name3 = {"z","e","r"}; // zero -> abreviado
             1:  abi_name3 = {"r","a"," "};
             2:  abi_name3 = {"s","p"," "};
             3:  abi_name3 = {"g","p"," "};
@@ -143,33 +149,35 @@ module risc_debug_display(
     endfunction
 
     // ============================================================
-    // Selección de caracteres (sin 'int' locales en always)
+    // Señales auxiliares precomputadas (evitar ints dentro de always)
     // ============================================================
-    logic right_col;
-    logic [5:0] row_idx;
-    always_comb begin
-        right_col = (rx >= REG_W + (REG_COL_SPACING>>1));
-        row_idx   = (ch_row >= 6'd2) ? (ch_row - 6'd2) : 6'd0;
-    end
+    logic        right_col;
+    logic [5:0]  row_idx;
+    assign right_col = (rx >= REG_W + (REG_COL_SPACING>>1));
+    assign row_idx   = (ch_row >= 6'd2) ? (ch_row - 6'd2) : 6'd0; // dejar 2 líneas para título
 
+    // Índice de registro para esta fila/columna
     integer reg_idx;
     always_comb begin
         if (row_idx < 16) reg_idx = right_col ? (row_idx + 16) : row_idx;
         else              reg_idx = -1;
     end
 
-    // Variables auxiliares fuera de if/case para evitar 'int' inline
+    // Cálculo de columnas lógicas sin variables locales en always
+    wire [6:0] base_col_w = right_col ? (REG_COLS + 7'd2) : 7'd0;
+    wire signed [7:0] c_w = $signed({1'b0,ch_col}) - $signed({1'b0,base_col_w});
+
+    // Prepara datos a mostrar
     logic [23:0] abi3;
     logic [31:0] rv;
     logic        reg_changed;
-    integer      base_col;
-    integer      c;
-    integer      idx;
 
+    // ============================================================
+    // Generación de caracteres (pure combinational)
+    // ============================================================
     always_comb begin
-        ascii_code = 8'd32;
+        ascii_code = 8'd32; // por defecto
         if (in_regs) begin
-            // Título
             if (ch_row == 0) begin
                 case (ch_col)
                     0: ascii_code = "R";
@@ -189,26 +197,24 @@ module risc_debug_display(
                 abi3        = abi_name3(reg_idx);
                 rv          = regs_demo[reg_idx];
                 reg_changed = changed_mask[reg_idx];
-                base_col    = right_col ? (REG_COLS + 2) : 0;
-                c           = ch_col - base_col;
-
                 // abi (3 chars)
-                if (c == 0)       ascii_code = abi3[23:16];
-                else if (c == 1)  ascii_code = abi3[15:8];
-                else if (c == 2)  ascii_code = abi3[7:0];
-                else if (c == 3)  ascii_code = 8'd32;      // espacio
-                else if (c == 4)  ascii_code = "(";
-                else if (c == 5)  ascii_code = "x";
-                else if (c == 6)  ascii_code = 8'd48 + (reg_idx/10);
-                else if (c == 7)  ascii_code = 8'd48 + (reg_idx%10);
-                else if (c == 8)  ascii_code = ")";
-                else if (c == 9)  ascii_code = ":";
-                else if (c == 10) ascii_code = 8'd32;
-                else if (c == 11) ascii_code = "0";
-                else if (c == 12) ascii_code = "x";
-                else if (c >= 13 && c <= 20) begin
-                    idx = 31 - 4*(c-13);
-                    ascii_code = to_hex(rv[idx -: 4]);
+                if (c_w == 0)       ascii_code = abi3[23:16];
+                else if (c_w == 1)  ascii_code = abi3[15:8];
+                else if (c_w == 2)  ascii_code = abi3[7:0];
+                else if (c_w == 3)  ascii_code = 8'd32;      // espacio
+                else if (c_w == 4)  ascii_code = "(";
+                else if (c_w == 5)  ascii_code = "x";
+                else if (c_w == 6)  ascii_code = 8'd48 + (reg_idx/10);
+                else if (c_w == 7)  ascii_code = 8'd48 + (reg_idx%10);
+                else if (c_w == 8)  ascii_code = ")";
+                else if (c_w == 9)  ascii_code = ":";
+                else if (c_w == 10) ascii_code = 8'd32;
+                else if (c_w == 11) ascii_code = "0";
+                else if (c_w == 12) ascii_code = "x";
+                else if (c_w >= 13 && c_w <= 20) begin
+                    logic [4:0] nib_sel;
+                    nib_sel = 31 - 4*(c_w-13);
+                    ascii_code = to_hex(rv[nib_sel -: 4]);
                 end else begin
                     ascii_code = 8'd32;
                 end
@@ -217,8 +223,12 @@ module risc_debug_display(
     end
 
     // ============================================================
-    // Color de salida
+    // Color de salida: destaca registros cambiados (pure combinational)
     // ============================================================
+    // rid calculado sin variables locales
+    wire signed [7:0] rid_w = right_col ? ($signed({1'b0,ch_row}) - 8'sd2 + 8'sd16)
+                                        : ($signed({1'b0,ch_row}) - 8'sd2);
+
     always_comb begin
         if (~videoOn) begin
             {vga_red, vga_green, vga_blue} = 24'h000000;
@@ -226,15 +236,13 @@ module risc_debug_display(
             logic use_highlight;
             use_highlight = 1'b0;
             if (ch_row >= 2 && ch_row < 18) begin
-                integer rid;
-                rid = right_col ? (ch_row-2+16) : (ch_row-2);
-                if (rid >=0 && rid < 32) use_highlight = changed_mask[rid];
+                if (rid_w >= 0 && rid_w < 32) use_highlight = changed_mask[rid_w];
             end
             if (use_highlight) {vga_red, vga_green, vga_blue} = 24'hFFFFFF; else {vga_red, vga_green, vga_blue} = 24'hC0C0C0;
         end else if (in_regs) begin
-            {vga_red, vga_green, vga_blue} = 24'h202020;
+            {vga_red, vga_green, vga_blue} = 24'h202020; // fondo ventana
         end else begin
-            {vga_red, vga_green, vga_blue} = 24'h000000;
+            {vga_red, vga_green, vga_blue} = 24'h000000; // fondo general
         end
     end
 
