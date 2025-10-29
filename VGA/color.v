@@ -1,32 +1,31 @@
 // ============================================================
-// color.sv
+// color.v
 // Controlador VGA 1280x800 + Renderizado de texto 8x16
-// Convertido a SystemVerilog
 // ============================================================
 
 module color(
-  input logic clock,                 // 50 MHz clock
-  input logic sw0,                   // reset
-  input logic sw1,
-  input logic sw2,
-  input logic sw3,
-  input logic sw4,
-  input logic sw5,
-  output logic [7:0] vga_red,
-  output logic [7:0] vga_green,
-  output logic [7:0] vga_blue,
-  output logic vga_hsync,
-  output logic vga_vsync,
-  output logic vga_clock
+  input clock,                 // 50 MHz clock
+  input sw0,                   // reset
+  input sw1,
+  input sw2,
+  input sw3,
+  input sw4,
+  input sw5,
+  output reg [7:0] vga_red,
+  output reg [7:0] vga_green,
+  output reg [7:0] vga_blue,
+  output vga_hsync,
+  output vga_vsync,
+  output vga_clock
 );
 
   // ============================================================
   // Señales VGA
   // ============================================================
-  logic [10:0] x;
-  logic [9:0]  y;
-  logic videoOn;
-  logic vgaclk;
+  wire [10:0] x;
+  wire [9:0]  y;
+  wire videoOn;
+  wire vgaclk;
 
   // PLL VGA
   clock1280x800 vgaclock(
@@ -51,10 +50,10 @@ module color(
   // ============================================================
   // Fuente 8x16
   // ============================================================
-  logic [7:0] ascii_code;
-  logic [3:0] row_in_char;
-  logic [2:0] col_in_char;
-  logic pixel_on;
+  wire [7:0] ascii_code;
+  wire [3:0] row_in_char;
+  wire [2:0] col_in_char;
+  wire pixel_on;
 
   font_renderer font_inst (
       .clk(vgaclk),
@@ -67,13 +66,13 @@ module color(
   // ============================================================
   // Texto: "HOLA SANTIAGO"
   // ============================================================
-  logic [7:0] mensaje [0:11];
+  reg [7:0] mensaje [0:11];
   initial begin
     mensaje[0]  = 8'd72;  // H
     mensaje[1]  = 8'd79;  // O
     mensaje[2]  = 8'd76;  // L
     mensaje[3]  = 8'd65;  // A
-    mensaje[4]  = 8'd32;  // espacio (corregido de 8'd00 a 8'd32)
+    mensaje[4]  = 8'd00;  // espacio
     mensaje[5]  = 8'd83;  // S
     mensaje[6]  = 8'd65;  // A
     mensaje[7]  = 8'd78;  // N
@@ -88,8 +87,8 @@ module color(
   parameter CHAR_W = 8;
   parameter CHAR_H = 16;
 
-  logic [3:0] char_col = (x - TEXT_X) / CHAR_W;
-  logic inside_text = (x >= TEXT_X && x < TEXT_X + CHAR_W * 12 &&
+  wire [3:0] char_col = (x - TEXT_X) / CHAR_W;
+  wire inside_text = (x >= TEXT_X && x < TEXT_X + CHAR_W * 12 &&
                       y >= TEXT_Y && y < TEXT_Y + CHAR_H);
 
   assign row_in_char = (y - TEXT_Y) % CHAR_H;
@@ -99,7 +98,7 @@ module color(
   // ============================================================
   // Color de salida VGA
   // ============================================================
-  always_comb begin
+  always @(*) begin
     if (~videoOn)
       {vga_red, vga_green, vga_blue} = 24'h000000;
     else if (inside_text && pixel_on)
@@ -114,13 +113,12 @@ endmodule
 // ============================================================
 // Generador de reloj VGA
 // ============================================================
-module clock1280x800(
-  input logic clock50, 
-  input logic reset, 
-  output logic vgaclk
-);
+module clock1280x800(clock50, reset, vgaclk);
+  input clock50;
+  input reset;
+  output vgaclk;
 
-  logic null;
+  wire null;
   vgaClock clk(
     .ref_clk_clk(clock50),
     .ref_reset_reset(reset),
@@ -134,13 +132,13 @@ endmodule
 // Controlador VGA 1280x800
 // ============================================================
 module vga_controller_1280x800 (
-  input logic clk,
-  input logic reset,
-  output logic hsync,
-  output logic vsync,
-  output logic [10:0] hcount,
-  output logic [9:0]  vcount,
-  output logic video_on
+  input clk,
+  input reset,
+  output wire hsync,
+  output wire vsync,
+  output reg [10:0] hcount,
+  output reg [9:0]  vcount,
+  output video_on
 );
 
   parameter H_VISIBLE = 1280;
@@ -155,7 +153,7 @@ module vga_controller_1280x800 (
   parameter V_BP      = 22;
   parameter V_TOTAL   = V_VISIBLE + V_FP + V_SYNC + V_BP;
 
-  always_ff @(posedge clk or posedge reset) begin
+  always @(posedge clk or posedge reset) begin
     if (reset) begin
       hcount <= 0;
       vcount <= 0;
@@ -172,9 +170,9 @@ module vga_controller_1280x800 (
     end
   end
 
-  assign hsync = ~((hcount >= H_VISIBLE + H_FP) && 
-                   (hcount < H_VISIBLE + H_FP + H_SYNC));
-  assign vsync = ~((vcount >= V_VISIBLE + V_FP) && 
-                   (vcount < V_VISIBLE + V_FP + V_SYNC));
+  assign hsync = (hcount >= H_VISIBLE + H_FP) && 
+                 (hcount < H_VISIBLE + H_FP + H_SYNC);
+  assign vsync = (vcount >= V_VISIBLE + V_FP) && 
+                 (vcount < V_VISIBLE + V_FP + V_SYNC);
   assign video_on = (hcount < H_VISIBLE) && (vcount < V_VISIBLE);
 endmodule
