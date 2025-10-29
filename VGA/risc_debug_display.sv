@@ -150,7 +150,7 @@ module risc_debug_display(
     // ============================================================
     // Función para convertir nibble a ASCII hex
     // ============================================================
-    function [7:0] nibble_to_ascii(input [3:0] nibble);
+    function automatic [7:0] nibble_to_ascii(input [3:0] nibble);
         if (nibble < 10)
             nibble_to_ascii = 8'd48 + nibble;  // '0'-'9'
         else
@@ -426,18 +426,19 @@ endmodule
 
 
 // ============================================================
-// Generador de reloj VGA (reutilizado)
+// Generador de reloj VGA (reutilizado) - corregido: evitar uso de 'null' como identificador
 // ============================================================
-module clock1280x800(clock50, reset, vgaclk);
-    input clock50;
-    input reset;
-    output vgaclk;
+module clock1280x800(
+    input logic clock50,
+    input logic reset,
+    output logic vgaclk
+);
 
-    wire null;
+    wire dummy_reset;
     vgaClock clk(
         .ref_clk_clk(clock50),
         .ref_reset_reset(reset),
-        .reset_source_reset(null),
+        .reset_source_reset(dummy_reset),
         .vga_clk_clk(vgaclk)
     );
 endmodule
@@ -447,13 +448,13 @@ endmodule
 // Controlador VGA 1280x800 (reutilizado)
 // ============================================================
 module vga_controller_1280x800 (
-    input clk,
-    input reset,
-    output wire hsync,
-    output wire vsync,
-    output reg [10:0] hcount,
-    output reg [9:0]  vcount,
-    output video_on
+    input logic clk,
+    input logic reset,
+    output logic hsync,
+    output logic vsync,
+    output logic [10:0] hcount,
+    output logic [9:0]  vcount,
+    output logic video_on
 );
 
     parameter H_VISIBLE = 1280;
@@ -468,7 +469,7 @@ module vga_controller_1280x800 (
     parameter V_BP      = 22;
     parameter V_TOTAL   = V_VISIBLE + V_FP + V_SYNC + V_BP;
 
-    always @(posedge clk or posedge reset) begin
+    always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             hcount <= 0;
             vcount <= 0;
