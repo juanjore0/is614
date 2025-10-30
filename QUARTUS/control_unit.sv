@@ -81,6 +81,30 @@ module control_unit (
         br_op        = 5'b00xxx;
         ru_data_src  = 2'bxx;   // No importa, no escribimos en registros
       end
+		
+      7'b0110111: begin // LUI (Load Upper Immediate)
+        ru_write     = 1'b1;    // SÍ escribir en rd
+        alu_op       = 4'bxxxx; // ALU no se usa
+        imm_src      = 3'b100;  // Inmediato tipo U
+        alu_a_src    = 2'bxx;   // No importa
+        alu_b_src    = 1'bx;    // No importa
+        dm_write     = 1'b0;    // NO escribir en memoria
+        dm_ctrl      = 3'bxxx;  // No importa
+        br_op        = 5'b00xxx;
+        ru_data_src  = 2'b11;   // Escribir directamente el inmediato
+      end
+      
+      7'b0010111: begin // AUIPC (Add Upper Immediate to PC)
+        ru_write     = 1'b1;    // SÍ escribir en rd
+        alu_op       = 4'b0000; // ADD
+        imm_src      = 3'b100;  // Inmediato tipo U
+        alu_a_src    = 2'b01;   // Usar PC como operando A
+        alu_b_src    = 1'b1;    // Usar inmediato como operando B
+        dm_write     = 1'b0;    // NO escribir en memoria
+        dm_ctrl      = 3'bxxx;  // No importa
+        br_op        = 5'b00xxx;
+        ru_data_src  = 2'b00;   // Resultado de ALU (PC + imm)
+      end		
       
       default: begin
         ru_write     = 1'b0;

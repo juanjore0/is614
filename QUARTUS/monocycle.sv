@@ -64,8 +64,17 @@ module monocycle (
   
   assign subsra = alu_op[3];
   
+  // Multiplexor para operando A de la ALU
+  always_comb begin
+    case (alu_a_src)
+      2'b00:   aluOperandA = rs1Data;   // Usar rs1
+      2'b01:   aluOperandA = pc_current; // Usar PC (para AUIPC)
+      default: aluOperandA = rs1Data;
+    endcase
+  end
+  
   // Multiplexores
-  assign aluOperandA = rs1Data;  // Por ahora siempre rs1
+ 
   assign aluOperandB = alu_b_src ? immediate : rs2Data;
   
   // Multiplexor para seleccionar fuente de datos para registro
@@ -74,6 +83,7 @@ module monocycle (
       2'b00:   ruWriteData = aluResult;    // Resultado de ALU
       2'b01:   ruWriteData = memReadData;  // Datos de memoria
       2'b10:   ruWriteData = pc_sum;       // PC+4 (para JAL/JALR)
+		2'b11:   ruWriteData = immediate;    //inmediato para LUI
       default: ruWriteData = aluResult;
     endcase
   end
