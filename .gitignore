@@ -38,5 +38,11 @@ VGA/incremental_db/
 VGA/output_files/
 VGA/simulation/
 
+
+QUARTUS_VGA/db/
+QUARTUS_VGA/incremental_db/
+QUARTUS_VGA/output_files/
+QUARTUS_VGA/simulation/
+
 # Ignorar locks de Quartus
 *.rdr.flock
