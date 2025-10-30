@@ -7,71 +7,64 @@ module instruction_memory (
   assign instruction = memory[address[5:2]];
   
   initial begin
-    // === PROGRAMA DE PRUEBA: TIPO R, I y S ===
+    // === PROGRAMA DE PRUEBA: TIPO R, I, S y U ===
     
-    // --- Preparar valores en registros ---
-    // 0x00: ADDI x1, x0, 10    -> x1 = 10
-    memory[0] = 32'h00A00093;
+    // --- INSTRUCCIONES TIPO U (LUI y AUIPC) ---
+    // 0x00: LUI x1, 0x12345    -> x1 = 0x12345000
+    // Formato: imm[31:12] | rd | opcode
+    // imm=0x12345, rd=x1, opcode=0110111
+    memory[0] = 32'h123450B7;
     
-    // 0x04: ADDI x2, x0, 20    -> x2 = 20
-    memory[1] = 32'h01400113;
+    // 0x04: AUIPC x2, 0x1000   -> x2 = PC(0x04) + 0x01000000 = 0x01000004
+    // imm=0x1000, rd=x2, opcode=0010111
+    memory[1] = 32'h01000117;
     
-    // 0x08: ADDI x3, x0, 0     -> x3 = 0 (dirección base para stores)
-    memory[2] = 32'h00000193;
+    // 0x08: LUI x3, 0xABCDE    -> x3 = 0xABCDE000
+    memory[2] = 32'hABCDE1B7;
     
-    // 0x0C: ADD x4, x1, x2     -> x4 = x1 + x2 = 30
-    memory[3] = 32'h002081B3;
+    // 0x0C: AUIPC x4, 0x0      -> x4 = PC(0x0C) + 0 = 0x0000000C
+    memory[3] = 32'h00000217;
     
-    // --- INSTRUCCIONES STORE (TIPO S) ---
-    // 0x10: SW x1, 0(x3)       -> Mem[0] = x1 = 10
-    // Formato: imm[11:5] | rs2 | rs1 | funct3 | imm[4:0] | opcode
-    // imm=0, rs2=x1, rs1=x3, funct3=010 (SW), opcode=0100011
-    memory[4] = 32'h00118023;
+    // --- Combinar con instrucciones inmediatas ---
+    // 0x10: ADDI x5, x1, 0x678 -> x5 = x1 + 0x678 = 0x12345678
+    memory[4] = 32'h678082B3;
     
-    // 0x14: SW x2, 4(x3)       -> Mem[4] = x2 = 20
-    // imm=4, rs2=x2, rs1=x3, funct3=010 (SW)
-    memory[5] = 32'h00218223;
+    // 0x14: ADDI x6, x3, 0xF   -> x6 = x3 + 0xF = 0xABCDE00F
+    memory[5] = 32'h00F18313;
     
-    // 0x18: SW x4, 8(x3)       -> Mem[8] = x4 = 30
-    // imm=8, rs2=x4, rs1=x3, funct3=010 (SW)
-    memory[6] = 32'h00418423;
+    // --- Preparar para Store ---
+    // 0x18: ADDI x7, x0, 0     -> x7 = 0 (dirección base)
+    memory[6] = 32'h00000393;
     
-    // --- Preparar para Store Byte y Halfword ---
-    // 0x1C: ADDI x5, x0, 255   -> x5 = 0xFF
-    memory[7] = 32'h0FF00293;
+    // 0x1C: SW x1, 0(x7)       -> Mem[0] = x1 = 0x12345000
+    memory[7] = 32'h0013A023;
     
-    // 0x20: ADDI x6, x0, 4096  -> x6 = 0x1000
-    memory[8] = 32'h00001337;  // LUI x6, 1
+    // 0x20: SW x2, 4(x7)       -> Mem[4] = x2 = 0x01000004
+    memory[8] = 32'h0023A223;
     
-    // 0x24: SB x5, 12(x3)      -> Mem[12][7:0] = 0xFF
-    // funct3=000 (SB)
-    memory[9] = 32'h00518623;
+    // 0x24: SW x5, 8(x7)       -> Mem[8] = x5 = 0x12345678
+    memory[9] = 32'h0053A423;
     
-    // 0x28: SH x6, 14(x3)      -> Mem[14][15:0] = 0x1000
-    // funct3=001 (SH)
-    memory[10] = 32'h00619723;
+    // --- Verificar con Load ---
+    // 0x28: LW x8, 0(x7)       -> x8 = Mem[0]
+    memory[10] = 32'h0003A403;
     
-    // --- Verificar con LOAD ---
-    // 0x2C: LW x7, 0(x3)       -> x7 = Mem[0] = 10
-    memory[11] = 32'h0001A383;
+    // 0x2C: LW x9, 4(x7)       -> x9 = Mem[4]
+    memory[11] = 32'h0043A483;
     
-    // 0x30: LW x8, 4(x3)       -> x8 = Mem[4] = 20
-    memory[12] = 32'h0041A403;
+    // 0x30: LW x10, 8(x7)      -> x10 = Mem[8]
+    memory[12] = 32'h0083A503;
     
-    // 0x34: LW x9, 8(x3)       -> x9 = Mem[8] = 30
-    memory[13] = 32'h0081A483;
-    
-    // 0x38: LB x10, 12(x3)     -> x10 = Mem[12] = 0xFF (sign extended)
-    memory[14] = 32'h00C18503;
-    
-    // 0x3C: LH x11, 14(x3)     -> x11 = Mem[14] = 0x1000
-    memory[15] = 32'h00E19583;
+    // Resto sin usar
+    memory[13] = 32'h00000013; // NOP
+    memory[14] = 32'h00000013; // NOP
+    memory[15] = 32'h00000013; // NOP
     
     $display("=== Memoria de instrucciones inicializada ===");
-    $display("Tipo I-Inmediato: 4 instrucciones (preparar registros)");
-    $display("Tipo R: 1 instrucción (ADD)");
-    $display("Tipo S: 5 instrucciones (SW x3, SB x1, SH x1)");
-    $display("Tipo I-Load: 5 instrucciones (verificación)");
+    $display("Tipo U: 4 instrucciones (LUI x2, AUIPC x2)");
+    $display("Tipo I: 3 instrucciones (ADDI x3)");
+    $display("Tipo S: 3 instrucciones (SW x3)");
+    $display("Tipo I-Load: 3 instrucciones (LW x3)");
   end
 
 endmodule

@@ -14,6 +14,13 @@ module immediate_generator (
         // imm[11:5] = instruction[31:25]
         // imm[4:0]  = instruction[11:7]
         immediate = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+		end
+      
+      3'b100: begin // Tipo U (LUI, AUIPC)
+        // imm[31:12] = instruction[31:12]
+        // imm[11:0]  = 0 (ceros en bits bajos)
+        immediate = {instruction[31:12], 12'b0};	  
+		  
       end
       
       
