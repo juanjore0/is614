@@ -83,7 +83,7 @@ module monocycle (
       2'b00:   ruWriteData = aluResult;    // Resultado de ALU
       2'b01:   ruWriteData = memReadData;  // Datos de memoria
       2'b10:   ruWriteData = pc_sum;       // PC+4 (para JAL/JALR)
-		2'b11:   ruWriteData = immediate;    //inmediato para LUI
+		  2'b11:   ruWriteData = immediate;    //inmediato para LUI
       default: ruWriteData = aluResult;
     endcase
   end
