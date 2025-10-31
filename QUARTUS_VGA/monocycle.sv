@@ -216,7 +216,7 @@ module monocycle (
   
   
   // ========== EXPONER MEMORIA PARA VGA ==========
-  logic [31:0] memory_display [0:7];
+  logic [31:0] memory_display [0:63];
   
   data_memory dmem (
 	  .clk(clk),

@@ -6,15 +6,15 @@ module data_memory (
   input  logic [2:0]  dm_ctrl,      // Control de tamaño y signo
   
   output logic [31:0] read_data,    // Datos leídos
-  output logic [31:0] memory_out [0:7]
+  output logic [31:0] memory_out [0:63] // Salida para debug
 );
 
   // Memoria de datos - 64 palabras (256 bytes)
   logic [31:0] memory [0:63];
-  
-  // Exponer primeras 8 posiciones para debug
-  assign memory_out = memory[0:7];
-  
+
+  // Exponer todas las posiciones para debug
+  assign memory_out = memory;
+
   // Señales intermedias para lectura
   logic [31:0] raw_data;
   logic [7:0]  byte_data;
