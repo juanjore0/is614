@@ -20,28 +20,28 @@ module instruction_memory (
     memory[2] = 32'h00000193;
     
     // 0x0C: ADD x4, x1, x2     -> x4 = x1 + x2 = 30
-    memory[3] = 32'h002081B3;
+    memory[3] = 32'h00208233;
     
     // --- INSTRUCCIONES STORE (TIPO S) ---
     // 0x10: SW x1, 0(x3)       -> Mem[0] = x1 = 10
     // Formato: imm[11:5] | rs2 | rs1 | funct3 | imm[4:0] | opcode
     // imm=0, rs2=x1, rs1=x3, funct3=010 (SW), opcode=0100011
-    memory[4] = 32'h00118023;
+    memory[4] = 32'h0011A023;
     
     // 0x14: SW x2, 4(x3)       -> Mem[4] = x2 = 20
     // imm=4, rs2=x2, rs1=x3, funct3=010 (SW)
-    memory[5] = 32'h00218223;
+    memory[5] = 32'h0021A223;
     
     // 0x18: SW x4, 8(x3)       -> Mem[8] = x4 = 30
     // imm=8, rs2=x4, rs1=x3, funct3=010 (SW)
-    memory[6] = 32'h00418423;
+    memory[6] = 32'h0041A423;
     
     // --- Preparar para Store Byte y Halfword ---
     // 0x1C: ADDI x5, x0, 255   -> x5 = 0xFF
     memory[7] = 32'h0FF00293;
     
-    // 0x20: ADDI x6, x0, 4096  -> x6 = 0x1000
-    memory[8] = 32'h00001337;  // LUI x6, 1
+    // 0x20: LUI x6, 1          -> x6 = 0x1000
+    memory[8] = 32'h00001337;
     
     // 0x24: SB x5, 12(x3)      -> Mem[12][7:0] = 0xFF
     // funct3=000 (SB)
@@ -68,10 +68,16 @@ module instruction_memory (
     memory[15] = 32'h00E19583;
     
     $display("=== Memoria de instrucciones inicializada ===");
-    $display("Tipo I-Inmediato: 4 instrucciones (preparar registros)");
-    $display("Tipo R: 1 instrucción (ADD)");
-    $display("Tipo S: 5 instrucciones (SW x3, SB x1, SH x1)");
-    $display("Tipo I-Load: 5 instrucciones (verificación)");
+    $display("Total: 16 instrucciones");
+    $display("  - 4x ADDI (preparar registros)");
+    $display("  - 1x ADD  (suma)");
+    $display("  - 1x LUI  (load upper immediate)");
+    $display("  - 3x SW   (store word)");
+    $display("  - 1x SB   (store byte)");
+    $display("  - 1x SH   (store halfword)");
+    $display("  - 3x LW   (load word)");
+    $display("  - 1x LB   (load byte)");
+    $display("  - 1x LH   (load halfword)");
   end
 
 endmodule
