@@ -209,7 +209,7 @@ module monocycle (
   alu alu_unit (
     .operand1(aluOperandA),
     .operand2(aluOperandB),
-    .funct3(funct3),
+    .funct3(alu_op[2:0]),
     .subsra(subsra),
     .result(aluResult)
   );
