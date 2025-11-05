@@ -56,7 +56,7 @@ def main(asm_file, hex_file, bin_file):
         for instruction_code in machine_code:
             # Se formatea el entero como un número hexadecimal de 8 dígitos (32 bits),
             # rellenando con ceros a la izquierda (ej: `00000073`).
-            f_hex.write(f"{instruction_code:08x}\n")
+            f_hex.write(f"{instruction_code:08X}\n")
             # Se formatea el entero como un numero binario de 32 bits,
             f_bin.write(f"{instruction_code:032b}\n")
     
