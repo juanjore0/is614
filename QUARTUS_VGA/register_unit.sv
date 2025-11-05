@@ -6,7 +6,6 @@ module registerUnit (
   input  logic        reset,
   input  logic        writeEnable,
   input  logic [31:0] data,
-  input  logic        tr,   // modo "trace"
   
   output logic [31:0] rs1Data,
   output logic [31:0] rs2Data,
@@ -37,14 +36,5 @@ module registerUnit (
   // Lectura combinacional
   assign rs1Data = registers[rs1];
   assign rs2Data = registers[rs2];
-
-  // Debug (mostrar contenido)
-  always_ff @(posedge clk) begin
-    if (tr && !reset) begin
-      for (int i = 0; i < 32; i++) begin
-        $display("R[%0d] = %0d", i, registers[i]);
-      end
-    end
-  end
 
 endmodule

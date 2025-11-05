@@ -30,13 +30,12 @@ module monocycle (
   // ========== SEÑALES DE CONTROL ==========
   logic        clk;
   logic        reset;
-  logic        tr;
+
   logic        show_result;
   logic        show_high_bits;
   
   assign clk = ~KEY[0];              // KEY[0] como reloj manual
   assign reset = ~KEY[1];            // KEY[1] como reset
-  assign tr = SW[1];                 // SW[1] para modo trace
   assign show_result = SW[9];        // SW[9]: 0=instrucción, 1=resultado
   assign show_high_bits = SW[8];     // SW[8]: 0=bits[15:0], 1=bits[31:16]
   
@@ -200,7 +199,6 @@ module monocycle (
     .reset(reset),
     .writeEnable(ru_write),
     .data(ruWriteData),
-    .tr(tr),
     .rs1Data(rs1Data),
     .rs2Data(rs2Data),
     .registers_out(registers)  // ← NUEVA CONEXIÓN
